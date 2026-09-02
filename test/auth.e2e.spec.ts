@@ -36,6 +36,7 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
   let refreshSessions: any[];
 
   beforeEach(async () => {
+    process.env.JWT_ACCESS_SECRET = 'test-platform-jwt-secret';
     process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
     passwordHash = await bcrypt.hash(testPassword, 10);
     mockOwner = createMockOwner();
@@ -135,6 +136,7 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
 
   afterEach(async () => {
     await app.close();
+    delete process.env.JWT_ACCESS_SECRET;
     delete process.env.GOOGLE_CLIENT_ID;
   });
 
