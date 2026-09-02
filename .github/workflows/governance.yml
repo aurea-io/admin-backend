@@ -1,0 +1,8 @@
+name: Governance
+on:
+  issues: { types: [opened, edited, reopened] }
+  pull_request: { types: [opened, edited, reopened, ready_for_review] }
+permissions: { contents: read, issues: read, pull-requests: read }
+jobs:
+  governance:
+    uses: aurea-io/aurea-ci/.github/workflows/governance.yml@main
