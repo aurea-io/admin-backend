@@ -38,6 +38,8 @@ export const AUTH_ERRORS = {
   GOOGLE_AUDIENCE_MISMATCH: 'Invalid Google token audience',
   GOOGLE_VALIDATION_FAILED: 'Failed to validate credentials with Google',
   GOOGLE_UNAUTHORIZED_USER: 'Platform user not found or not authorized',
+  GOOGLE_CLIENT_ID_NOT_CONFIGURED:
+    'GOOGLE_CLIENT_ID must be configured in environment variables',
 } as const;
 
 export const PLATFORM_USER_SAFE_SELECT = {

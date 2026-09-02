@@ -4,10 +4,10 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
 import { TokenService } from './services/token.service.js';
 import { GoogleAuthService, type VerifiedGoogleUser } from './services/google-auth.service.js';
 import { PasswordUtil } from './utils/password.util.js';
+import { PlatformUserRepository } from './repositories/platform-user.repository.js';
 import {
   AUTH_ERRORS,
   AUTH_MESSAGES,
@@ -23,7 +23,7 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly platformUserRepository: PlatformUserRepository,
     private readonly tokenService: TokenService,
     private readonly googleAuthService: GoogleAuthService,
   ) {}
@@ -33,9 +33,7 @@ export class AuthService {
    */
   async login(dto: LoginDto) {
     const email = dto.email.toLowerCase().trim();
-    const user = await this.prisma.platformUser.findUnique({
-      where: { email },
-    });
+    const user = await this.platformUserRepository.findByEmail(email);
 
     const isPasswordValid = await PasswordUtil.compare(dto.password, user?.passwordHash);
 
@@ -60,12 +58,11 @@ export class AuthService {
    */
   async loginWithGoogle(dto: GoogleLoginDto) {
     const verifiedGoogleUser = await this.googleAuthService.verifyIdToken(dto.idToken);
-    const user = await this.resolveAndLinkGoogleUser(verifiedGoogleUser);
-
-    if (!user || !user.isActive) {
-      this.logger.warn('Google login attempt failed: unauthorized or inactive platform account');
-      throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_UNAUTHORIZED_USER);
-    }
+    const user = this.requireActiveUser(
+      await this.resolveAndLinkGoogleUser(verifiedGoogleUser),
+      AUTH_ERRORS.GOOGLE_UNAUTHORIZED_USER,
+      'Google login attempt failed: unauthorized or inactive platform account',
+    );
 
     const updatedUser = await this.touchLastLogin(user.id);
     this.logger.log(`Platform user authenticated via Google (ID: ${updatedUser.id})`);
@@ -82,13 +79,10 @@ export class AuthService {
    * Updates platform user password and increments tokenVersion to revoke other sessions.
    */
   async changePassword(userId: string, dto: ChangePasswordDto) {
-    const user = await this.prisma.platformUser.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException(AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND);
-    }
+    const user = this.requireActiveUser(
+      await this.platformUserRepository.findById(userId),
+      AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND,
+    );
 
     if (user.passwordHash) {
       const isCurrentValid = await PasswordUtil.compare(dto.currentPassword, user.passwordHash);
@@ -99,14 +93,7 @@ export class AuthService {
 
     const newPasswordHash = await PasswordUtil.hash(dto.newPassword);
 
-    const updatedUser = await this.prisma.platformUser.update({
-      where: { id: userId },
-      data: {
-        passwordHash: newPasswordHash,
-        tokenVersion: { increment: 1 },
-      },
-      select: PLATFORM_USER_SAFE_SELECT,
-    });
+    const updatedUser = await this.platformUserRepository.updatePassword(userId, newPasswordHash);
 
     this.logger.log(
       `Password changed for user ID: ${updatedUser.id}. tokenVersion incremented to ${updatedUser.tokenVersion}`,
@@ -126,50 +113,50 @@ export class AuthService {
    * Retrieves sanitized profile information for the authenticated platform user.
    */
   async getProfile(userId: string) {
-    const user = await this.prisma.platformUser.findUnique({
-      where: { id: userId },
-      select: PLATFORM_USER_SAFE_SELECT,
-    });
-
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException(AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND);
-    }
+    const user = this.requireActiveUser(
+      await this.platformUserRepository.findById(userId, PLATFORM_USER_SAFE_SELECT),
+      AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND,
+    );
 
     return user;
   }
 
   // ── Private Helpers ─────────────────────────────────────────────────────────
 
+  private requireActiveUser(
+    user: PlatformUser | null,
+    errorMessage: string,
+    contextMessage?: string,
+  ): PlatformUser {
+    if (!user || !user.isActive) {
+      if (contextMessage) {
+        this.logger.warn(contextMessage);
+      }
+      throw new UnauthorizedException(errorMessage);
+    }
+
+    return user;
+  }
+
   private async touchLastLogin(userId: string) {
-    return this.prisma.platformUser.update({
-      where: { id: userId },
-      data: { lastLoginAt: new Date() },
-      select: PLATFORM_USER_SAFE_SELECT,
-    });
+    return this.platformUserRepository.updateLastLogin(userId);
   }
 
   private async resolveAndLinkGoogleUser(googleUser: VerifiedGoogleUser): Promise<PlatformUser | null> {
     const { googleId, email } = googleUser;
 
     // 1. Check by verified googleId
-    let user = await this.prisma.platformUser.findUnique({
-      where: { googleId },
-    });
+    let user = await this.platformUserRepository.findByGoogleId(googleId);
 
     if (user) {
       return user;
     }
 
     // 2. Check by email and link googleId if the provisioned user account exists
-    user = await this.prisma.platformUser.findUnique({
-      where: { email },
-    });
+    user = await this.platformUserRepository.findByEmail(email);
 
     if (user && !user.googleId) {
-      user = await this.prisma.platformUser.update({
-        where: { id: user.id },
-        data: { googleId },
-      });
+      user = await this.platformUserRepository.updateGoogleId(user.id, googleId);
       this.logger.log(`Google account linked to existing platform user (ID: ${user.id})`);
     }
 

@@ -10,6 +10,7 @@ import { PlatformJwtAuthGuard } from './guards/platform-jwt-auth.guard.js';
 import { PlatformPermissionsGuard } from './guards/platform-permissions.guard.js';
 import { TokenService } from './services/token.service.js';
 import { GoogleAuthService } from './services/google-auth.service.js';
+import { PlatformUserRepository } from './repositories/platform-user.repository.js';
 import {
   AUTH_CONFIG,
   AUTH_ENV_KEYS,
@@ -41,6 +42,7 @@ import {
   controllers: [AuthController],
   providers: [
     AuthService,
+    PlatformUserRepository,
     TokenService,
     GoogleAuthService,
     JwtStrategy,
@@ -49,6 +51,7 @@ import {
   ],
   exports: [
     AuthService,
+    PlatformUserRepository,
     TokenService,
     GoogleAuthService,
     JwtModule,

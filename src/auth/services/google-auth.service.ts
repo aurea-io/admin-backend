@@ -15,8 +15,15 @@ export interface VerifiedGoogleUser {
 @Injectable()
 export class GoogleAuthService {
   private readonly logger = new Logger(GoogleAuthService.name);
+  private readonly expectedAudience: string;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    const expectedAudience = config.get<string>(AUTH_ENV_KEYS.GOOGLE_CLIENT_ID);
+    if (!expectedAudience) {
+      throw new Error(AUTH_ERRORS.GOOGLE_CLIENT_ID_NOT_CONFIGURED);
+    }
+    this.expectedAudience = expectedAudience;
+  }
 
   /**
    * Cryptographically verifies Google ID Token against Google TokenInfo endpoint
@@ -38,13 +45,16 @@ export class GoogleAuthService {
 
       const payload = await response.json();
 
-      if (!payload.sub || !payload.email) {
+      if (!payload.sub || !payload.email || !payload.email_verified) {
         throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_CLAIMS_MALFORMED);
       }
 
-      // Optional Google Client ID audience verification if configured
-      const expectedAudience = this.config.get<string>(AUTH_ENV_KEYS.GOOGLE_CLIENT_ID);
-      if (expectedAudience && payload.aud !== expectedAudience) {
+      const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
+      if (!emailVerified) {
+        throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_CLAIMS_MALFORMED);
+      }
+
+      if (payload.aud !== this.expectedAudience) {
         this.logger.warn('Google token audience does not match GOOGLE_CLIENT_ID');
         throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_AUDIENCE_MISMATCH);
       }

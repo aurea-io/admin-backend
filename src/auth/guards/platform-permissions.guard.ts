@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PlatformRole } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service.js';
 import { REQUIRE_FEATURES_KEY } from '../decorators/require-features.decorator.js';
 import { AUTH_ERRORS } from '../constants/auth.constants.js';
+import { PlatformUserRepository } from '../repositories/platform-user.repository.js';
 import type { Request } from 'express';
 import type { PlatformJwtPayload } from '../interfaces/jwt-payload.interface.js';
 
@@ -17,7 +17,7 @@ import type { PlatformJwtPayload } from '../interfaces/jwt-payload.interface.js'
 export class PlatformPermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService,
+    private readonly platformUserRepository: PlatformUserRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -39,9 +39,10 @@ export class PlatformPermissionsGuard implements CanActivate {
     }
 
     // Query active state from MongoDB
-    const user = await this.prisma.platformUser.findUnique({
-      where: { id: jwtUser.sub },
-      select: { role: true, allowedFeatures: true, isActive: true },
+    const user = await this.platformUserRepository.findById(jwtUser.sub, {
+      role: true,
+      allowedFeatures: true,
+      isActive: true,
     });
 
     if (!user || !user.isActive) {

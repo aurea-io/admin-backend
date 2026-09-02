@@ -34,6 +34,7 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
   let mockOwner: ReturnType<typeof createMockOwner>;
 
   beforeEach(async () => {
+    process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
     passwordHash = await bcrypt.hash(testPassword, 10);
     mockOwner = createMockOwner();
     mockOwner.passwordHash = passwordHash;
@@ -105,6 +106,7 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
 
   afterEach(async () => {
     await app.close();
+    delete process.env.GOOGLE_CLIENT_ID;
   });
 
   it('POST /api/v1/auth/login - should log in with valid credentials and return JWT with scope platform', async () => {

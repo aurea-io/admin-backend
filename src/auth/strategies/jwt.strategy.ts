@@ -2,8 +2,8 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service.js';
 import type { PlatformJwtPayload } from '../interfaces/jwt-payload.interface.js';
+import { PlatformUserRepository } from '../repositories/platform-user.repository.js';
 import {
   AUTH_CONFIG,
   AUTH_ENV_KEYS,
@@ -14,7 +14,7 @@ import {
 export class JwtStrategy extends PassportStrategy(Strategy, AUTH_CONFIG.STRATEGY_JWT) {
   constructor(
     config: ConfigService,
-    private readonly prisma: PrismaService,
+    private readonly platformUserRepository: PlatformUserRepository,
   ) {
     const secret = config.get<string>(AUTH_ENV_KEYS.JWT_ACCESS_SECRET);
     if (!secret) {
@@ -34,17 +34,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, AUTH_CONFIG.STRATEGY
     }
 
     // Backend is the source of truth: real-time validation against MongoDB
-    const user = await this.prisma.platformUser.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        allowedFeatures: true,
-        isActive: true,
-        tokenVersion: true,
-      },
+    const user = await this.platformUserRepository.findById(payload.sub, {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      allowedFeatures: true,
+      isActive: true,
+      tokenVersion: true,
     });
 
     if (!user || !user.isActive) {
