@@ -8,6 +8,7 @@ describe('AuthService', () => {
   let authService: AuthService;
   let mockPrisma: any;
   let mockTokenService: any;
+  let mockGoogleAuthService: any;
 
   const testPassword = 'Password123!';
   let testPasswordHash: string;
@@ -26,7 +27,11 @@ describe('AuthService', () => {
       generatePlatformToken: vi.fn().mockResolvedValue('mock-jwt-token'),
     };
 
-    authService = new AuthService(mockPrisma, mockTokenService);
+    mockGoogleAuthService = {
+      verifyIdToken: vi.fn(),
+    };
+
+    authService = new AuthService(mockPrisma, mockTokenService, mockGoogleAuthService);
   });
 
   describe('login', () => {
@@ -114,6 +119,12 @@ describe('AuthService', () => {
         tokenVersion: 1,
       };
 
+      mockGoogleAuthService.verifyIdToken.mockResolvedValue({
+        googleId: 'google-uid-123',
+        email: 'operator@aurea.io',
+        name: 'Operator',
+      });
+
       mockPrisma.platformUser.findUnique.mockResolvedValue(mockUser);
       mockPrisma.platformUser.update.mockResolvedValue({
         ...mockUser,
@@ -121,12 +132,11 @@ describe('AuthService', () => {
       });
 
       const result = await authService.loginWithGoogle({
-        googleId: 'google-uid-123',
-        email: 'operator@aurea.io',
-        name: 'Operator',
+        idToken: 'valid-google-id-token',
       });
 
       expect(result.accessToken).toBe('mock-jwt-token');
+      expect(mockGoogleAuthService.verifyIdToken).toHaveBeenCalledWith('valid-google-id-token');
       expect(result.user.googleId ?? mockUser.googleId).toBe('google-uid-123');
     });
 
@@ -141,6 +151,12 @@ describe('AuthService', () => {
         isActive: true,
         tokenVersion: 1,
       };
+
+      mockGoogleAuthService.verifyIdToken.mockResolvedValue({
+        googleId: 'new-google-uid',
+        email: 'owner@aurea.io',
+        name: 'Owner',
+      });
 
       // 1st call (by googleId) returns null, 2nd call (by email) returns mockUserWithoutGoogle
       mockPrisma.platformUser.findUnique
@@ -159,9 +175,7 @@ describe('AuthService', () => {
         });
 
       const result = await authService.loginWithGoogle({
-        googleId: 'new-google-uid',
-        email: 'owner@aurea.io',
-        name: 'Owner',
+        idToken: 'valid-google-id-token',
       });
 
       expect(result.accessToken).toBe('mock-jwt-token');
@@ -174,13 +188,17 @@ describe('AuthService', () => {
     });
 
     it('should reject unprovisioned Google users', async () => {
+      mockGoogleAuthService.verifyIdToken.mockResolvedValue({
+        googleId: 'unknown-google-id',
+        email: 'stranger@gmail.com',
+        name: 'Stranger',
+      });
+
       mockPrisma.platformUser.findUnique.mockResolvedValue(null);
 
       await expect(
         authService.loginWithGoogle({
-          googleId: 'unknown-google-id',
-          email: 'stranger@gmail.com',
-          name: 'Stranger',
+          idToken: 'unprovisioned-token',
         }),
       ).rejects.toThrow(UnauthorizedException);
     });

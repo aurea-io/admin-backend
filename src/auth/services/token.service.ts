@@ -14,10 +14,20 @@ export interface IssuePlatformTokenParams {
 
 @Injectable()
 export class TokenService {
+  private readonly secret: string;
+  private readonly expiresIn: string;
+
   constructor(
     private readonly jwt: JwtService,
-    private readonly config: ConfigService,
-  ) {}
+    config: ConfigService,
+  ) {
+    const secret = config.get<string>('JWT_ACCESS_SECRET');
+    if (!secret) {
+      throw new Error('JWT_ACCESS_SECRET debe estar configurado en las variables de entorno');
+    }
+    this.secret = secret;
+    this.expiresIn = config.get<string>('JWT_ACCESS_EXPIRES_IN') || '1h';
+  }
 
   /**
    * Generates a signed platform JWT containing identity, scope, and tokenVersion for revocation.
@@ -33,8 +43,8 @@ export class TokenService {
     };
 
     return this.jwt.signAsync(payload, {
-      secret: this.config.get<string>('JWT_ACCESS_SECRET') || 'default-platform-jwt-secret',
-      expiresIn: (this.config.get<string>('JWT_ACCESS_EXPIRES_IN') || '1h') as any,
+      secret: this.secret,
+      expiresIn: this.expiresIn as any,
     });
   }
 }

@@ -30,9 +30,7 @@ describe('AuthController', () => {
 
   it('should call authService.loginWithGoogle on google endpoint', async () => {
     const googleDto = {
-      googleId: 'g-123',
-      email: 'admin@aurea.io',
-      name: 'Admin',
+      idToken: 'google-valid-token-123',
     };
     mockAuthService.loginWithGoogle.mockResolvedValue({
       accessToken: 'token-google',

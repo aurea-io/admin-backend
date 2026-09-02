@@ -4,33 +4,38 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
+import { GoogleAuthService } from '../src/auth/services/google-auth.service.js';
 import { PlatformRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 describe('Auth Endpoints (E2E / HTTP Integration)', () => {
   let app: INestApplication;
   let mockPrisma: any;
+  let mockGoogleAuthService: any;
 
   const testPassword = 'SecurePassword123!';
   let passwordHash: string;
 
-  const mockOwner = {
+  const createMockOwner = () => ({
     id: '65f1a2b3c4d5e6f7a8b9c001',
     email: 'owner@aurea.io',
     name: 'Platform Owner',
     passwordHash: '',
-    googleId: null,
+    googleId: null as string | null,
     role: PlatformRole.platform_owner,
     allowedFeatures: [],
     isActive: true,
     tokenVersion: 1,
-    lastLoginAt: null,
+    lastLoginAt: null as Date | null,
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  });
+
+  let mockOwner: ReturnType<typeof createMockOwner>;
 
   beforeEach(async () => {
     passwordHash = await bcrypt.hash(testPassword, 10);
+    mockOwner = createMockOwner();
     mockOwner.passwordHash = passwordHash;
 
     mockPrisma = {
@@ -63,11 +68,26 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
       },
     };
 
+    mockGoogleAuthService = {
+      verifyIdToken: vi.fn().mockImplementation((idToken: string) => {
+        if (idToken === 'valid-google-id-token') {
+          return Promise.resolve({
+            googleId: 'google-id-123',
+            email: 'owner@aurea.io',
+            name: 'Platform Owner',
+          });
+        }
+        throw new Error('Invalid token');
+      }),
+    };
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaService)
       .useValue(mockPrisma)
+      .overrideProvider(GoogleAuthService)
+      .useValue(mockGoogleAuthService)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -111,13 +131,11 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
       .expect(401);
   });
 
-  it('POST /api/v1/auth/google - should login / link googleId', async () => {
+  it('POST /api/v1/auth/google - should login / link verified googleId token', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/auth/google')
       .send({
-        googleId: 'google-id-123',
-        email: 'owner@aurea.io',
-        name: 'Platform Owner',
+        idToken: 'valid-google-id-token',
       })
       .expect(200);
 

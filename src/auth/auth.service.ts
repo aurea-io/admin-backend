@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TokenService } from './services/token.service.js';
+import { GoogleAuthService, type VerifiedGoogleUser } from './services/google-auth.service.js';
 import { PasswordUtil } from './utils/password.util.js';
 import { PLATFORM_USER_SAFE_SELECT } from './constants/auth.constants.js';
 import type { LoginDto } from './dto/login.dto.js';
@@ -20,6 +21,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
+    private readonly googleAuthService: GoogleAuthService,
   ) {}
 
   /**
@@ -34,12 +36,12 @@ export class AuthService {
     const isPasswordValid = await PasswordUtil.compare(dto.password, user?.passwordHash);
 
     if (!user || !isPasswordValid || !user.isActive) {
-      this.logger.warn(`Intento de login fallido para: ${dto.email}`);
+      this.logger.warn('Intento de login fallido: credenciales inválidas o usuario inactivo');
       throw new UnauthorizedException('Correo electrónico o contraseña incorrectos');
     }
 
     const updatedUser = await this.touchLastLogin(user.id);
-    this.logger.log(`Usuario de plataforma autenticado: ${updatedUser.email} (${updatedUser.role})`);
+    this.logger.log(`Usuario de plataforma autenticado (ID: ${updatedUser.id}, Rol: ${updatedUser.role})`);
 
     const accessToken = await this.tokenService.generatePlatformToken(updatedUser);
 
@@ -50,18 +52,19 @@ export class AuthService {
   }
 
   /**
-   * Autenticación y vinculación transparente de cuentas Google OAuth.
+   * Autenticación y vinculación transparente de cuentas Google OAuth a partir de idToken verificado.
    */
   async loginWithGoogle(dto: GoogleLoginDto) {
-    const user = await this.resolveAndLinkGoogleUser(dto);
+    const verifiedGoogleUser = await this.googleAuthService.verifyIdToken(dto.idToken);
+    const user = await this.resolveAndLinkGoogleUser(verifiedGoogleUser);
 
     if (!user || !user.isActive) {
-      this.logger.warn(`Intento de login con Google no autorizado: ${dto.email}`);
+      this.logger.warn('Intento de login con Google no autorizado o cuenta inactiva');
       throw new UnauthorizedException('Usuario de plataforma no encontrado o no autorizado');
     }
 
     const updatedUser = await this.touchLastLogin(user.id);
-    this.logger.log(`Usuario autenticado vía Google: ${updatedUser.email}`);
+    this.logger.log(`Usuario autenticado vía Google (ID: ${updatedUser.id})`);
 
     const accessToken = await this.tokenService.generatePlatformToken(updatedUser);
 
@@ -102,7 +105,7 @@ export class AuthService {
     });
 
     this.logger.log(
-      `Contraseña cambiada para: ${updatedUser.email}. tokenVersion incrementado a ${updatedUser.tokenVersion}`,
+      `Contraseña cambiada para usuario ID: ${updatedUser.id}. tokenVersion: ${updatedUser.tokenVersion}`,
     );
 
     const accessToken = await this.tokenService.generatePlatformToken(updatedUser);
@@ -141,12 +144,12 @@ export class AuthService {
     });
   }
 
-  private async resolveAndLinkGoogleUser(dto: GoogleLoginDto): Promise<PlatformUser | null> {
-    const email = dto.email.toLowerCase().trim();
+  private async resolveAndLinkGoogleUser(googleUser: VerifiedGoogleUser): Promise<PlatformUser | null> {
+    const { googleId, email } = googleUser;
 
-    // 1. Buscar por googleId registrado
+    // 1. Buscar por googleId verificado
     let user = await this.prisma.platformUser.findUnique({
-      where: { googleId: dto.googleId },
+      where: { googleId },
     });
 
     if (user) {
@@ -161,9 +164,9 @@ export class AuthService {
     if (user && !user.googleId) {
       user = await this.prisma.platformUser.update({
         where: { id: user.id },
-        data: { googleId: dto.googleId },
+        data: { googleId },
       });
-      this.logger.log(`Cuenta Google vinculada a usuario existente: ${email}`);
+      this.logger.log(`Cuenta Google vinculada a usuario existente (ID: ${user.id})`);
     }
 
     return user;

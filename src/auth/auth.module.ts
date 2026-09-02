@@ -8,20 +8,26 @@ import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { PlatformJwtAuthGuard } from './guards/platform-jwt-auth.guard.js';
 import { PlatformPermissionsGuard } from './guards/platform-permissions.guard.js';
-
 import { TokenService } from './services/token.service.js';
+import { GoogleAuthService } from './services/google-auth.service.js';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_ACCESS_SECRET') || 'default-platform-jwt-secret',
-        signOptions: {
-          expiresIn: (config.get<string>('JWT_ACCESS_EXPIRES_IN') || '1h') as any,
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>('JWT_ACCESS_SECRET');
+        if (!secret) {
+          throw new Error('JWT_ACCESS_SECRET debe estar configurado en las variables de entorno');
+        }
+        return {
+          secret,
+          signOptions: {
+            expiresIn: (config.get<string>('JWT_ACCESS_EXPIRES_IN') || '1h') as any,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     PrismaModule,
@@ -30,6 +36,7 @@ import { TokenService } from './services/token.service.js';
   providers: [
     AuthService,
     TokenService,
+    GoogleAuthService,
     JwtStrategy,
     PlatformJwtAuthGuard,
     PlatformPermissionsGuard,
@@ -37,6 +44,7 @@ import { TokenService } from './services/token.service.js';
   exports: [
     AuthService,
     TokenService,
+    GoogleAuthService,
     JwtModule,
     PassportModule,
     PlatformJwtAuthGuard,
