@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import type { CreatePlanDto, CreateTenantDto, UpdatePlanDto, UpdateTenantDto } from './dto/platform.dto.js';
 
 @Injectable()
 export class PlatformService {
@@ -15,8 +16,27 @@ export class PlatformService {
     return tenant;
   }
 
+  createTenant(dto: CreateTenantDto) {
+    return this.prisma.platformTenant.create({ data: { ...dto, slug: dto.slug.toLowerCase().trim() } });
+  }
+
+  async updateTenant(id: string, dto: UpdateTenantDto) {
+    await this.getTenant(id);
+    return this.prisma.platformTenant.update({ where: { id }, data: dto });
+  }
+
   listPlans() {
     return this.prisma.platformPlan.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  createPlan(dto: CreatePlanDto) {
+    return this.prisma.platformPlan.create({ data: { ...dto, includedFeatures: dto.includedFeatures ?? [] } });
+  }
+
+  async updatePlan(id: string, dto: UpdatePlanDto) {
+    const plan = await this.prisma.platformPlan.findUnique({ where: { id } });
+    if (!plan) throw new NotFoundException('Plan not found');
+    return this.prisma.platformPlan.update({ where: { id }, data: dto });
   }
 
   listFeatures() {
