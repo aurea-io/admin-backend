@@ -7,6 +7,7 @@ import { PrismaService } from '../src/prisma/prisma.service.js';
 import { GoogleAuthService } from '../src/auth/services/google-auth.service.js';
 import { PlatformRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import cookieParser from 'cookie-parser';
 
 describe('Auth Endpoints (E2E / HTTP Integration)', () => {
   let app: INestApplication;
@@ -32,12 +33,14 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
   });
 
   let mockOwner: ReturnType<typeof createMockOwner>;
+  let refreshSessions: any[];
 
   beforeEach(async () => {
     process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
     passwordHash = await bcrypt.hash(testPassword, 10);
     mockOwner = createMockOwner();
     mockOwner.passwordHash = passwordHash;
+    refreshSessions = [];
 
     mockPrisma = {
       $connect: vi.fn(),
@@ -67,6 +70,27 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
           return Promise.resolve({ ...mockOwner });
         }),
       },
+      refreshSession: {
+        create: vi.fn().mockImplementation(({ data }) => {
+          const session = { id: `session-${refreshSessions.length + 1}`, ...data, revokedAt: null, createdAt: new Date(), lastUsedAt: null, replacedBy: null };
+          refreshSessions.push(session);
+          return Promise.resolve(session);
+        }),
+        findUnique: vi.fn().mockImplementation(({ where }) => {
+          const session = refreshSessions.find((item) => item.tokenHash === where.tokenHash);
+          return Promise.resolve(session ? { ...session, user: { ...mockOwner } } : null);
+        }),
+        updateMany: vi.fn().mockImplementation(({ where, data }) => {
+          const matching = refreshSessions.filter((item) =>
+            (!where.id || item.id === where.id) && (!where.userId || item.userId === where.userId) &&
+            (!where.tokenHash || item.tokenHash === where.tokenHash) &&
+            (where.revokedAt === undefined || item.revokedAt === where.revokedAt),
+          );
+          matching.forEach((item) => Object.assign(item, data));
+          return Promise.resolve({ count: matching.length });
+        }),
+        update: vi.fn().mockResolvedValue({}),
+      },
     };
 
     mockGoogleAuthService = {
@@ -93,6 +117,7 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
+    app.use(cookieParser());
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -131,6 +156,44 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
         password: 'wrong-password',
       })
       .expect(401);
+  });
+
+  it('POST /api/v1/auth/refresh rotates the cookie and rejects refresh-token replay', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'owner@aurea.io', password: testPassword })
+      .expect(200);
+    const firstCookie = login.headers['set-cookie'][0].split(';')[0];
+
+    const refreshed = await request(app.getHttpServer())
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', firstCookie)
+      .expect(200);
+    expect(refreshed.body.accessToken).toBeTruthy();
+    const secondCookie = refreshed.headers['set-cookie'][0].split(';')[0];
+    expect(secondCookie).not.toBe(firstCookie);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', firstCookie)
+      .expect(401);
+  });
+
+  it('POST /api/v1/auth/logout revokes the current session and is idempotent', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'owner@aurea.io', password: testPassword })
+      .expect(200);
+    const cookie = login.headers['set-cookie'][0].split(';')[0];
+
+    const logout = await request(app.getHttpServer())
+      .post('/api/v1/auth/logout')
+      .set('Cookie', cookie)
+      .expect(204);
+    expect(logout.headers['set-cookie'][0]).toContain('aurea_refresh=;');
+
+    await request(app.getHttpServer()).post('/api/v1/auth/logout').expect(204);
+    await request(app.getHttpServer()).post('/api/v1/auth/refresh').set('Cookie', cookie).expect(401);
   });
 
   it('POST /api/v1/auth/google - should login / link verified googleId token', async () => {
