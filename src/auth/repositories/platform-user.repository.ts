@@ -3,8 +3,21 @@ import type { PlatformUser, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { PLATFORM_USER_SAFE_SELECT } from '../constants/auth.constants.js';
 
-type SafePlatformUser = Prisma.PlatformUserGetPayload<{
+export type SafePlatformUser = Prisma.PlatformUserGetPayload<{
   select: typeof PLATFORM_USER_SAFE_SELECT;
+}>;
+
+export type PasswordCheckPlatformUser = Prisma.PlatformUserGetPayload<{
+  select: {
+    id: true;
+    email: true;
+    name: true;
+    role: true;
+    allowedFeatures: true;
+    isActive: true;
+    tokenVersion: true;
+    passwordHash: true;
+  };
 }>;
 
 @Injectable()
@@ -17,14 +30,34 @@ export class PlatformUserRepository {
     });
   }
 
-  async findById<T extends Prisma.PlatformUserSelect | undefined>(
-    id: string,
-    select: T = PLATFORM_USER_SAFE_SELECT as T,
-  ): Promise<Prisma.PlatformUserGetPayload<{ select: T }> | null> {
+  async findById(id: string): Promise<SafePlatformUser | null> {
     return this.prisma.platformUser.findUnique({
       where: { id },
-      select: select ?? undefined,
-    }) as Prisma.PlatformUserGetPayload<{ select: T }> | null;
+      select: PLATFORM_USER_SAFE_SELECT,
+    });
+  }
+
+  async findByIdForProfile(id: string): Promise<SafePlatformUser | null> {
+    return this.prisma.platformUser.findUnique({
+      where: { id },
+      select: PLATFORM_USER_SAFE_SELECT,
+    });
+  }
+
+  async findByIdForPasswordChange(id: string): Promise<PasswordCheckPlatformUser | null> {
+    return this.prisma.platformUser.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        allowedFeatures: true,
+        isActive: true,
+        tokenVersion: true,
+        passwordHash: true,
+      },
+    });
   }
 
   async findByGoogleId(googleId: string): Promise<PlatformUser | null> {
@@ -38,7 +71,7 @@ export class PlatformUserRepository {
       where: { id: userId },
       data: { lastLoginAt: new Date() },
       select: PLATFORM_USER_SAFE_SELECT,
-    }) as Promise<SafePlatformUser>;
+    });
   }
 
   async updateGoogleId(userId: string, googleId: string): Promise<PlatformUser> {
@@ -56,6 +89,6 @@ export class PlatformUserRepository {
         tokenVersion: { increment: 1 },
       },
       select: PLATFORM_USER_SAFE_SELECT,
-    }) as Promise<SafePlatformUser>;
+    });
   }
 }

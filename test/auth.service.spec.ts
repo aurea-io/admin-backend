@@ -47,6 +47,8 @@ describe('AuthService', () => {
     mockPlatformUserRepository = {
       findByEmail: vi.fn(),
       findById: vi.fn(),
+      findByIdForProfile: vi.fn(),
+      findByIdForPasswordChange: vi.fn(),
       findByGoogleId: vi.fn(),
       updateLastLogin: vi.fn(),
       updateGoogleId: vi.fn(),
@@ -232,7 +234,7 @@ describe('AuthService', () => {
         isActive: true,
       };
 
-      mockPlatformUserRepository.findById.mockResolvedValue(mockUser);
+      mockPlatformUserRepository.findByIdForPasswordChange.mockResolvedValue(mockUser);
       mockPlatformUserRepository.updatePassword.mockResolvedValue({
         ...mockUser,
         tokenVersion: 2,
@@ -244,16 +246,7 @@ describe('AuthService', () => {
         newPassword: 'BrandNewPassword456!',
       });
 
-      expect(mockPlatformUserRepository.findById).toHaveBeenCalledWith('user-1', {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        allowedFeatures: true,
-        isActive: true,
-        tokenVersion: true,
-        passwordHash: true,
-      });
+      expect(mockPlatformUserRepository.findByIdForPasswordChange).toHaveBeenCalledWith('user-1');
       expect(mockPlatformUserRepository.updatePassword).toHaveBeenCalledWith(
         'user-1',
         expect.any(String),
@@ -298,7 +291,7 @@ describe('AuthService', () => {
         isActive: true,
       };
 
-      mockPlatformUserRepository.findById.mockResolvedValue(mockUser);
+      mockPlatformUserRepository.findByIdForPasswordChange.mockResolvedValue(mockUser);
 
       await expect(
         authService.changePassword('user-1', {
@@ -323,7 +316,7 @@ describe('AuthService', () => {
         createdAt: new Date(),
       };
 
-      mockPlatformUserRepository.findById.mockResolvedValue(mockUser);
+      mockPlatformUserRepository.findByIdForProfile.mockResolvedValue(mockUser);
 
       const profile = await authService.getProfile('user-1');
       expect(profile.id).toBe('user-1');

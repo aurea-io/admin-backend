@@ -80,16 +80,7 @@ export class AuthService {
    */
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = this.requireActiveUser(
-      await this.platformUserRepository.findById(userId, {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        allowedFeatures: true,
-        isActive: true,
-        tokenVersion: true,
-        passwordHash: true,
-      }),
+      await this.platformUserRepository.findByIdForPasswordChange(userId),
       AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND,
     );
 
@@ -123,7 +114,7 @@ export class AuthService {
    */
   async getProfile(userId: string) {
     const user = this.requireActiveUser(
-      await this.platformUserRepository.findById(userId, PLATFORM_USER_SAFE_SELECT),
+      await this.platformUserRepository.findByIdForProfile(userId),
       AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND,
     );
 
@@ -132,11 +123,11 @@ export class AuthService {
 
   // ── Private Helpers ─────────────────────────────────────────────────────────
 
-  private requireActiveUser(
-    user: PlatformUser | null,
+  private requireActiveUser<T extends { id: string; isActive: boolean }>(
+    user: T | null,
     errorMessage: string,
     contextMessage?: string,
-  ): PlatformUser {
+  ): T {
     if (!user || !user.isActive) {
       if (contextMessage) {
         this.logger.warn(contextMessage);
