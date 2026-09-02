@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { PlatformModule } from './platform/platform.module.js';
+import { HealthModule } from './health/health.module.js';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { PlatformModule } from './platform/platform.module.js';
     PrismaModule,
     AuthModule,
     PlatformModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
