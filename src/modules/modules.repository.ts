@@ -1,21 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import type { ModuleCatalogKind, ModuleCatalogStatus, Prisma } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 
-export interface CatalogEntryFilters {
+export interface ModuleFilters {
   kind?: ModuleCatalogKind;
   status?: ModuleCatalogStatus;
   sectionKey?: string;
 }
 
 @Injectable()
-export class PlatformCatalogRepository {
+export class ModulesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Returns all non-archived entries matching optional filters.
    */
-  findAll(filters: CatalogEntryFilters = {}) {
+  findAll(filters: ModuleFilters = {}) {
     const where: Prisma.ModuleCatalogEntryWhereInput = {
       isArchived: false,
       ...(filters.kind && { kind: filters.kind }),
@@ -60,7 +60,7 @@ export class PlatformCatalogRepository {
   }
 
   /**
-   * Creates a new catalog entry.
+   * Creates a new module catalog entry.
    */
   create(data: Prisma.ModuleCatalogEntryCreateInput) {
     return this.prisma.moduleCatalogEntry.create({ data });

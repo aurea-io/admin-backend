@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { ModuleCatalogKind, ModuleCatalogStatus } from '@prisma/client';
-import { PlatformCatalogService } from '../src/platform/catalog/platform-catalog.service.js';
-import { PlatformCatalogController } from '../src/platform/catalog/platform-catalog.controller.js';
-import { validateCatalogContract } from '../src/platform/catalog/contracts/catalog-contract.validator.js';
-import { defineCatalogManifest, buildCatalogContract } from '../src/platform/catalog/manifests/registry.js';
-import type { PlatformCatalogRepository } from '../src/platform/catalog/platform-catalog.repository.js';
-import type { CreateCatalogEntryDto, UpdateCatalogEntryDto, UpdateCatalogStatusDto } from '../src/platform/catalog/dto/index.js';
+import { ModulesService } from '../src/modules/modules.service.js';
+import { ModulesController } from '../src/modules/modules.controller.js';
+import { validateCatalogContract } from '../src/modules/contracts/catalog-contract.validator.js';
+import { defineCatalogManifest, buildCatalogContract } from '../src/modules/manifests/registry.js';
+import type { ModulesRepository } from '../src/modules/modules.repository.js';
+import type { CreateModuleDto, UpdateModuleDto, UpdateModuleStatusDto } from '../src/modules/dto/index.js';
 
-describe('Platform Catalog Module', () => {
-  let service: PlatformCatalogService;
-  let controller: PlatformCatalogController;
-  let mockRepo: Record<keyof PlatformCatalogRepository, any>;
+describe('Modules First-Class Resource', () => {
+  let service: ModulesService;
+  let controller: ModulesController;
+  let mockRepo: Record<keyof ModulesRepository, any>;
 
   const sampleEntry = {
     id: '65f1a2b3c4d5e6f7a8b9c0d1',
@@ -56,11 +56,11 @@ describe('Platform Catalog Module', () => {
       archive: vi.fn(),
     } as any;
 
-    service = new PlatformCatalogService(mockRepo as unknown as PlatformCatalogRepository);
-    controller = new PlatformCatalogController(service);
+    service = new ModulesService(mockRepo as unknown as ModulesRepository);
+    controller = new ModulesController(service);
   });
 
-  describe('PlatformCatalogService', () => {
+  describe('ModulesService', () => {
     describe('findAll', () => {
       it('should delegate to repository.findAll with filters', async () => {
         mockRepo.findAll.mockResolvedValue([sampleEntry]);
@@ -122,7 +122,7 @@ describe('Platform Catalog Module', () => {
     });
 
     describe('create', () => {
-      const dto: CreateCatalogEntryDto = {
+      const dto: CreateModuleDto = {
         key: 'services.bookings.create',
         kind: ModuleCatalogKind.feature,
         moduleKey: 'bookings',
@@ -162,7 +162,7 @@ describe('Platform Catalog Module', () => {
     });
 
     describe('update', () => {
-      const updateDto: UpdateCatalogEntryDto = {
+      const updateDto: UpdateModuleDto = {
         name: 'Nuevo Nombre',
         dependencies: ['services.bookings.v2'],
       };
@@ -196,7 +196,7 @@ describe('Platform Catalog Module', () => {
         mockRepo.findByKey.mockResolvedValue({ ...sampleEntry, status: ModuleCatalogStatus.draft });
         mockRepo.updateStatus.mockResolvedValue({ ...sampleEntry, status: ModuleCatalogStatus.active });
 
-        const statusDto: UpdateCatalogStatusDto = { status: ModuleCatalogStatus.active };
+        const statusDto: UpdateModuleStatusDto = { status: ModuleCatalogStatus.active };
         const result = await service.updateStatus('services.bookings.create', statusDto);
 
         expect(result.status).toBe(ModuleCatalogStatus.active);
@@ -206,7 +206,7 @@ describe('Platform Catalog Module', () => {
         mockRepo.findByKey.mockResolvedValue({ ...sampleEntry, status: ModuleCatalogStatus.active });
         mockRepo.updateStatus.mockResolvedValue({ ...sampleEntry, status: ModuleCatalogStatus.toBeDeprecated });
 
-        const statusDto: UpdateCatalogStatusDto = { status: ModuleCatalogStatus.toBeDeprecated };
+        const statusDto: UpdateModuleStatusDto = { status: ModuleCatalogStatus.toBeDeprecated };
         const result = await service.updateStatus('services.bookings.create', statusDto);
 
         expect(result.status).toBe(ModuleCatalogStatus.toBeDeprecated);
@@ -216,7 +216,7 @@ describe('Platform Catalog Module', () => {
         mockRepo.findByKey.mockResolvedValue({ ...sampleEntry, status: ModuleCatalogStatus.toBeDeprecated });
         mockRepo.updateStatus.mockResolvedValue({ ...sampleEntry, status: ModuleCatalogStatus.deprecated });
 
-        const statusDto: UpdateCatalogStatusDto = { status: ModuleCatalogStatus.deprecated };
+        const statusDto: UpdateModuleStatusDto = { status: ModuleCatalogStatus.deprecated };
         const result = await service.updateStatus('services.bookings.create', statusDto);
 
         expect(result.status).toBe(ModuleCatalogStatus.deprecated);
@@ -230,7 +230,7 @@ describe('Platform Catalog Module', () => {
           maintenanceEnabled: true,
         });
 
-        const statusDto: UpdateCatalogStatusDto = {
+        const statusDto: UpdateModuleStatusDto = {
           status: ModuleCatalogStatus.active,
           maintenanceEnabled: true,
         };
@@ -243,7 +243,7 @@ describe('Platform Catalog Module', () => {
       it('should reject invalid transition draft -> deprecated', async () => {
         mockRepo.findByKey.mockResolvedValue({ ...sampleEntry, status: ModuleCatalogStatus.draft });
 
-        const statusDto: UpdateCatalogStatusDto = { status: ModuleCatalogStatus.deprecated };
+        const statusDto: UpdateModuleStatusDto = { status: ModuleCatalogStatus.deprecated };
 
         await expect(service.updateStatus('services.bookings.create', statusDto)).rejects.toThrow(BadRequestException);
         expect(mockRepo.updateStatus).not.toHaveBeenCalled();
@@ -252,7 +252,7 @@ describe('Platform Catalog Module', () => {
       it('should reject transitions from deprecated (terminal state)', async () => {
         mockRepo.findByKey.mockResolvedValue({ ...sampleEntry, status: ModuleCatalogStatus.deprecated });
 
-        const statusDto: UpdateCatalogStatusDto = { status: ModuleCatalogStatus.active };
+        const statusDto: UpdateModuleStatusDto = { status: ModuleCatalogStatus.active };
 
         await expect(service.updateStatus('services.bookings.create', statusDto)).rejects.toThrow(BadRequestException);
       });
@@ -271,7 +271,7 @@ describe('Platform Catalog Module', () => {
     });
   });
 
-  describe('PlatformCatalogController', () => {
+  describe('ModulesController', () => {
     it('should route findAll to service.findAll', async () => {
       vi.spyOn(service, 'findAll').mockResolvedValue([sampleEntry]);
       const res = await controller.findAll(ModuleCatalogKind.feature, ModuleCatalogStatus.draft, 'services');
@@ -299,7 +299,7 @@ describe('Platform Catalog Module', () => {
     });
 
     it('should route create to service.create', async () => {
-      const dto: CreateCatalogEntryDto = {
+      const dto: CreateModuleDto = {
         key: 'services.bookings.create',
         kind: ModuleCatalogKind.feature,
         moduleKey: 'bookings',
@@ -313,7 +313,7 @@ describe('Platform Catalog Module', () => {
     });
 
     it('should route update to service.update', async () => {
-      const dto: UpdateCatalogEntryDto = { name: 'Actualizado' };
+      const dto: UpdateModuleDto = { name: 'Actualizado' };
       vi.spyOn(service, 'update').mockResolvedValue(sampleEntry);
       const res = await controller.update('services.bookings.create', dto);
       expect(service.update).toHaveBeenCalledWith('services.bookings.create', dto);
@@ -321,7 +321,7 @@ describe('Platform Catalog Module', () => {
     });
 
     it('should route updateStatus to service.updateStatus', async () => {
-      const dto: UpdateCatalogStatusDto = { status: ModuleCatalogStatus.active };
+      const dto: UpdateModuleStatusDto = { status: ModuleCatalogStatus.active };
       vi.spyOn(service, 'updateStatus').mockResolvedValue(sampleEntry);
       const res = await controller.updateStatus('services.bookings.create', dto);
       expect(service.updateStatus).toHaveBeenCalledWith('services.bookings.create', dto);

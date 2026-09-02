@@ -7,7 +7,7 @@ import {
 } from 'class-validator';
 import { ModuleCatalogStatus } from '@prisma/client';
 
-export class UpdateCatalogStatusDto {
+export class UpdateModuleStatusDto {
   @IsEnum(ModuleCatalogStatus)
   status!: ModuleCatalogStatus;
 

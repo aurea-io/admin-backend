@@ -6,10 +6,10 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { ModuleCatalogEntry, ModuleCatalogStatus } from '@prisma/client';
-import { PlatformCatalogRepository } from './platform-catalog.repository.js';
-import type { CreateCatalogEntryDto } from './dto/create-catalog-entry.dto.js';
-import type { UpdateCatalogEntryDto } from './dto/update-catalog-entry.dto.js';
-import type { UpdateCatalogStatusDto } from './dto/update-catalog-status.dto.js';
+import { ModulesRepository } from './modules.repository.js';
+import type { CreateModuleDto } from './dto/create-module.dto.js';
+import type { UpdateModuleDto } from './dto/update-module.dto.js';
+import type { UpdateModuleStatusDto } from './dto/update-module-status.dto.js';
 
 // Valid lifecycle transitions:
 // draft → active
@@ -23,17 +23,17 @@ const VALID_TRANSITIONS: Record<string, ModuleCatalogStatus[]> = {
   deprecated: [],
 };
 
-export interface CatalogTree {
+export interface ModuleTree {
   [sectionKey: string]: {
     [pageKey: string]: ModuleCatalogEntry[];
   };
 }
 
 @Injectable()
-export class PlatformCatalogService {
-  private readonly logger = new Logger(PlatformCatalogService.name);
+export class ModulesService {
+  private readonly logger = new Logger(ModulesService.name);
 
-  constructor(private readonly repo: PlatformCatalogRepository) {}
+  constructor(private readonly repo: ModulesRepository) {}
 
   /**
    * Lists all non-archived catalog entries with optional filters.
@@ -45,9 +45,9 @@ export class PlatformCatalogService {
   /**
    * Returns the hierarchical tree: { sectionKey → { pageKey → entries[] } }
    */
-  async getTree(): Promise<CatalogTree> {
+  async getTree(): Promise<ModuleTree> {
     const entries = await this.repo.findFlatTree();
-    const tree: CatalogTree = {};
+    const tree: ModuleTree = {};
 
     for (const entry of entries) {
       const section = entry.sectionKey;
@@ -67,20 +67,20 @@ export class PlatformCatalogService {
   async findByKey(key: string): Promise<ModuleCatalogEntry> {
     const entry = await this.repo.findByKey(key);
     if (!entry || entry.isArchived) {
-      throw new NotFoundException(`Module catalog entry with key '${key}' not found.`);
+      throw new NotFoundException(`Module with key '${key}' not found.`);
     }
     return entry;
   }
 
   /**
-   * Creates a new catalog entry.
+   * Creates a new module catalog entry.
    * Validates: key uniqueness, dependency existence.
    */
-  async create(dto: CreateCatalogEntryDto): Promise<ModuleCatalogEntry> {
+  async create(dto: CreateModuleDto): Promise<ModuleCatalogEntry> {
     // 1. Ensure key is not already in use
     const existing = await this.repo.findByKey(dto.key);
     if (existing) {
-      throw new ConflictException(`A catalog entry with key '${dto.key}' already exists.`);
+      throw new ConflictException(`A module with key '${dto.key}' already exists.`);
     }
 
     // 2. Validate dependencies exist
@@ -104,7 +104,7 @@ export class PlatformCatalogService {
       manifest: dto.manifest ?? null,
     });
 
-    this.logger.log(`Created catalog entry: ${entry.key} (kind: ${entry.kind})`);
+    this.logger.log(`Created module: ${entry.key} (kind: ${entry.kind})`);
     return entry;
   }
 
@@ -112,7 +112,7 @@ export class PlatformCatalogService {
    * Updates metadata of an existing entry and increments its version.
    * Validates dependency existence when dependencies are changed.
    */
-  async update(key: string, dto: UpdateCatalogEntryDto): Promise<ModuleCatalogEntry> {
+  async update(key: string, dto: UpdateModuleDto): Promise<ModuleCatalogEntry> {
     await this.findByKey(key);
 
     if (dto.dependencies !== undefined) {
@@ -135,7 +135,7 @@ export class PlatformCatalogService {
       }),
     });
 
-    this.logger.log(`Updated catalog entry: ${key} (version → ${updated.version})`);
+    this.logger.log(`Updated module: ${key} (version → ${updated.version})`);
     return updated;
   }
 
@@ -143,7 +143,7 @@ export class PlatformCatalogService {
    * Updates lifecycle status and/or maintenance window.
    * Validates that the requested status transition is allowed.
    */
-  async updateStatus(key: string, dto: UpdateCatalogStatusDto): Promise<ModuleCatalogEntry> {
+  async updateStatus(key: string, dto: UpdateModuleStatusDto): Promise<ModuleCatalogEntry> {
     const entry = await this.findByKey(key);
 
     // Validate lifecycle transition (idempotent: same → same is always valid)
@@ -182,8 +182,8 @@ export class PlatformCatalogService {
   async archive(key: string): Promise<{ message: string }> {
     await this.findByKey(key);
     await this.repo.archive(key);
-    this.logger.log(`Archived catalog entry: ${key}`);
-    return { message: `Catalog entry '${key}' has been archived.` };
+    this.logger.log(`Archived module: ${key}`);
+    return { message: `Module '${key}' has been archived.` };
   }
 
   // ── Private Helpers ──────────────────────────────────────────────────────────
