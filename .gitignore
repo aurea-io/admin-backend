@@ -1,0 +1,51 @@
+# Compiled output
+/dist
+/build
+*.tsbuildinfo
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Environment variables & secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Testing & Coverage
+/coverage
+/.nyc_output
+/.vitest
+
+# IDEs & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Temporary files
+/tmp
+/temp
