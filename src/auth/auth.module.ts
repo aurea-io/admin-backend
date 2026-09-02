@@ -11,6 +11,7 @@ import { PlatformPermissionsGuard } from './guards/platform-permissions.guard.js
 import { TokenService } from './services/token.service.js';
 import { GoogleAuthService } from './services/google-auth.service.js';
 import { PlatformUserRepository } from './repositories/platform-user.repository.js';
+import { RefreshSessionRepository } from './repositories/refresh-session.repository.js';
 import {
   AUTH_CONFIG,
   AUTH_ENV_KEYS,
@@ -43,6 +44,7 @@ import {
   providers: [
     AuthService,
     PlatformUserRepository,
+    RefreshSessionRepository,
     TokenService,
     GoogleAuthService,
     JwtStrategy,

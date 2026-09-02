@@ -34,15 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, AUTH_CONFIG.STRATEGY
     }
 
     // Backend is the source of truth: real-time validation against MongoDB
-    const user = await this.platformUserRepository.findById(payload.sub, {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      allowedFeatures: true,
-      isActive: true,
-      tokenVersion: true,
-    });
+    const user = await this.platformUserRepository.findById(payload.sub);
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException(AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND);

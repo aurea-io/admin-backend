@@ -6,11 +6,16 @@ export const DUMMY_TIMING_ATTACK_HASH =
 export const AUTH_ENV_KEYS = {
   JWT_ACCESS_SECRET: 'JWT_ACCESS_SECRET',
   JWT_ACCESS_EXPIRES_IN: 'JWT_ACCESS_EXPIRES_IN',
+  JWT_REFRESH_EXPIRES_IN: 'JWT_REFRESH_EXPIRES_IN',
+  COOKIE_SECURE: 'COOKIE_SECURE',
+  COOKIE_SAME_SITE: 'COOKIE_SAME_SITE',
   GOOGLE_CLIENT_ID: 'GOOGLE_CLIENT_ID',
 } as const;
 
 export const AUTH_CONFIG = {
   DEFAULT_JWT_EXPIRES_IN: '1h',
+  DEFAULT_REFRESH_EXPIRES_IN: '7d',
+  REFRESH_COOKIE_NAME: 'aurea_refresh',
   PLATFORM_SCOPE: 'platform',
   STRATEGY_JWT: 'jwt',
   GOOGLE_TOKENINFO_ENDPOINT: 'https://oauth2.googleapis.com/tokeninfo',
@@ -40,6 +45,7 @@ export const AUTH_ERRORS = {
   GOOGLE_UNAUTHORIZED_USER: 'Platform user not found or not authorized',
   GOOGLE_CLIENT_ID_NOT_CONFIGURED:
     'GOOGLE_CLIENT_ID must be configured in environment variables',
+  INVALID_REFRESH_TOKEN: 'Invalid, expired, or revoked refresh session',
 } as const;
 
 export const PLATFORM_USER_SAFE_SELECT = {

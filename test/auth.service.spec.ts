@@ -37,6 +37,7 @@ describe('AuthService', () => {
   let mockPlatformUserRepository: any;
   let mockTokenService: any;
   let mockGoogleAuthService: any;
+  let mockRefreshSessionRepository: any;
 
   const testPassword = 'Password123!';
   let testPasswordHash: string;
@@ -57,13 +58,23 @@ describe('AuthService', () => {
 
     mockTokenService = {
       generatePlatformToken: vi.fn().mockResolvedValue('mock-jwt-token'),
+      generateRefreshToken: vi.fn().mockReturnValue('opaque-refresh-token'),
+      hashRefreshToken: vi.fn().mockReturnValue('refresh-token-hash'),
     };
 
     mockGoogleAuthService = {
       verifyIdToken: vi.fn(),
     };
+    mockRefreshSessionRepository = {
+      create: vi.fn().mockResolvedValue({ id: 'refresh-session-1' }),
+      revokeAllForUser: vi.fn().mockResolvedValue({ count: 1 }),
+      findByHash: vi.fn(),
+      revokeForRotation: vi.fn(),
+      markReplaced: vi.fn(),
+      revokeByHash: vi.fn(),
+    };
 
-    authService = new AuthService(mockPlatformUserRepository, mockTokenService, mockGoogleAuthService);
+    authService = new AuthService(mockPlatformUserRepository, mockTokenService, mockGoogleAuthService, mockRefreshSessionRepository);
   });
 
   describe('login', () => {
@@ -262,7 +273,7 @@ describe('AuthService', () => {
         isActive: true,
       };
 
-      mockPlatformUserRepository.findById.mockResolvedValue(mockUser);
+      mockPlatformUserRepository.findByIdForPasswordChange.mockResolvedValue(mockUser);
       mockPlatformUserRepository.updatePassword.mockResolvedValue({
         ...mockUser,
         tokenVersion: 2,

@@ -39,11 +39,7 @@ export class PlatformPermissionsGuard implements CanActivate {
     }
 
     // Query active state from MongoDB
-    const user = await this.platformUserRepository.findById(jwtUser.sub, {
-      role: true,
-      allowedFeatures: true,
-      isActive: true,
-    });
+    const user = await this.platformUserRepository.findById(jwtUser.sub);
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException(AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND);

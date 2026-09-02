@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createHash, randomBytes } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PlatformRole } from '@prisma/client';
@@ -53,5 +54,13 @@ export class TokenService {
       secret: this.secret,
       expiresIn: this.expiresIn as any,
     });
+  }
+
+  generateRefreshToken(): string {
+    return randomBytes(48).toString('base64url');
+  }
+
+  hashRefreshToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 }
