@@ -4,16 +4,21 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { PlatformJwtPayload } from '../interfaces/jwt-payload.interface.js';
+import {
+  AUTH_CONFIG,
+  AUTH_ENV_KEYS,
+  AUTH_ERRORS,
+} from '../constants/auth.constants.js';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class JwtStrategy extends PassportStrategy(Strategy, AUTH_CONFIG.STRATEGY_JWT) {
   constructor(
     config: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    const secret = config.get<string>('JWT_ACCESS_SECRET');
+    const secret = config.get<string>(AUTH_ENV_KEYS.JWT_ACCESS_SECRET);
     if (!secret) {
-      throw new Error('JWT_ACCESS_SECRET must be configured in environment variables');
+      throw new Error(AUTH_ERRORS.JWT_SECRET_NOT_CONFIGURED);
     }
 
     super({
@@ -24,8 +29,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: PlatformJwtPayload): Promise<PlatformJwtPayload> {
-    if (!payload.sub || !payload.email || payload.scope !== 'platform') {
-      throw new UnauthorizedException('Invalid platform token or invalid token scope');
+    if (!payload.sub || !payload.email || payload.scope !== AUTH_CONFIG.PLATFORM_SCOPE) {
+      throw new UnauthorizedException(AUTH_ERRORS.INVALID_TOKEN_SCOPE);
     }
 
     // Backend is the source of truth: real-time validation against MongoDB
@@ -43,12 +48,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Platform user is inactive or not found');
+      throw new UnauthorizedException(AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND);
     }
 
     // Instant session revocation via tokenVersion comparison
     if (user.tokenVersion !== payload.tokenVersion) {
-      throw new UnauthorizedException('Session has been revoked or expired');
+      throw new UnauthorizedException(AUTH_ERRORS.SESSION_REVOKED);
     }
 
     return {
@@ -57,7 +62,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       name: user.name,
       role: user.role,
       tokenVersion: user.tokenVersion,
-      scope: 'platform',
+      scope: AUTH_CONFIG.PLATFORM_SCOPE,
     };
   }
 }

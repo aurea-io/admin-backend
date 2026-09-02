@@ -6,9 +6,10 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
+import { AUTH_CONFIG, AUTH_ERRORS } from '../constants/auth.constants.js';
 
 @Injectable()
-export class PlatformJwtAuthGuard extends AuthGuard('jwt') {
+export class PlatformJwtAuthGuard extends AuthGuard(AUTH_CONFIG.STRATEGY_JWT) {
   constructor(private reflector: Reflector) {
     super();
   }
@@ -30,7 +31,7 @@ export class PlatformJwtAuthGuard extends AuthGuard('jwt') {
     _info: unknown,
   ): TUser {
     if (err || !user) {
-      throw new UnauthorizedException('Invalid or missing platform access token');
+      throw new UnauthorizedException(AUTH_ERRORS.INVALID_OR_MISSING_TOKEN);
     }
     return user;
   }

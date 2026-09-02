@@ -1,5 +1,10 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  AUTH_CONFIG,
+  AUTH_ENV_KEYS,
+  AUTH_ERRORS,
+} from '../constants/auth.constants.js';
 
 export interface VerifiedGoogleUser {
   googleId: string;
@@ -19,29 +24,29 @@ export class GoogleAuthService {
    */
   async verifyIdToken(idToken: string): Promise<VerifiedGoogleUser> {
     if (!idToken) {
-      throw new UnauthorizedException('Google ID token was not provided');
+      throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_TOKEN_NOT_PROVIDED);
     }
 
     try {
       const response = await fetch(
-        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+        `${AUTH_CONFIG.GOOGLE_TOKENINFO_ENDPOINT}?id_token=${encodeURIComponent(idToken)}`,
       );
 
       if (!response.ok) {
-        throw new UnauthorizedException('Invalid or expired Google ID token');
+        throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_TOKEN_INVALID_OR_EXPIRED);
       }
 
       const payload = await response.json();
 
       if (!payload.sub || !payload.email) {
-        throw new UnauthorizedException('Incomplete or malformed claims in Google token');
+        throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_CLAIMS_MALFORMED);
       }
 
       // Optional Google Client ID audience verification if configured
-      const expectedAudience = this.config.get<string>('GOOGLE_CLIENT_ID');
+      const expectedAudience = this.config.get<string>(AUTH_ENV_KEYS.GOOGLE_CLIENT_ID);
       if (expectedAudience && payload.aud !== expectedAudience) {
         this.logger.warn('Google token audience does not match GOOGLE_CLIENT_ID');
-        throw new UnauthorizedException('Invalid Google token audience');
+        throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_AUDIENCE_MISMATCH);
       }
 
       return {
@@ -54,7 +59,7 @@ export class GoogleAuthService {
         throw error;
       }
       this.logger.error(`Error verifying Google token: ${(error as Error).message}`);
-      throw new UnauthorizedException('Failed to validate credentials with Google');
+      throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_VALIDATION_FAILED);
     }
   }
 }

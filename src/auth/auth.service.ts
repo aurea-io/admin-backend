@@ -8,7 +8,11 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { TokenService } from './services/token.service.js';
 import { GoogleAuthService, type VerifiedGoogleUser } from './services/google-auth.service.js';
 import { PasswordUtil } from './utils/password.util.js';
-import { PLATFORM_USER_SAFE_SELECT } from './constants/auth.constants.js';
+import {
+  AUTH_ERRORS,
+  AUTH_MESSAGES,
+  PLATFORM_USER_SAFE_SELECT,
+} from './constants/auth.constants.js';
 import type { LoginDto } from './dto/login.dto.js';
 import type { GoogleLoginDto } from './dto/google-login.dto.js';
 import type { ChangePasswordDto } from './dto/change-password.dto.js';
@@ -37,7 +41,7 @@ export class AuthService {
 
     if (!user || !isPasswordValid || !user.isActive) {
       this.logger.warn('Login attempt failed: invalid credentials or inactive account');
-      throw new UnauthorizedException('Invalid email address or password');
+      throw new UnauthorizedException(AUTH_ERRORS.INVALID_CREDENTIALS);
     }
 
     const updatedUser = await this.touchLastLogin(user.id);
@@ -60,7 +64,7 @@ export class AuthService {
 
     if (!user || !user.isActive) {
       this.logger.warn('Google login attempt failed: unauthorized or inactive platform account');
-      throw new UnauthorizedException('Platform user not found or not authorized');
+      throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_UNAUTHORIZED_USER);
     }
 
     const updatedUser = await this.touchLastLogin(user.id);
@@ -83,13 +87,13 @@ export class AuthService {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Platform user not found or inactive');
+      throw new UnauthorizedException(AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND);
     }
 
     if (user.passwordHash) {
       const isCurrentValid = await PasswordUtil.compare(dto.currentPassword, user.passwordHash);
       if (!isCurrentValid) {
-        throw new BadRequestException('Current password is incorrect');
+        throw new BadRequestException(AUTH_ERRORS.CURRENT_PASSWORD_INCORRECT);
       }
     }
 
@@ -111,7 +115,7 @@ export class AuthService {
     const accessToken = await this.tokenService.generatePlatformToken(updatedUser);
 
     return {
-      message: 'Password updated successfully. Other active sessions have been revoked.',
+      message: AUTH_MESSAGES.PASSWORD_UPDATED,
       tokenVersion: updatedUser.tokenVersion,
       accessToken,
       user: updatedUser,
@@ -128,7 +132,7 @@ export class AuthService {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Platform user not found or inactive');
+      throw new UnauthorizedException(AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND);
     }
 
     return user;

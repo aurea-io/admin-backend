@@ -9,6 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { PlatformRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { REQUIRE_FEATURES_KEY } from '../decorators/require-features.decorator.js';
+import { AUTH_ERRORS } from '../constants/auth.constants.js';
 import type { Request } from 'express';
 import type { PlatformJwtPayload } from '../interfaces/jwt-payload.interface.js';
 
@@ -34,7 +35,7 @@ export class PlatformPermissionsGuard implements CanActivate {
     const jwtUser = request['user'] as PlatformJwtPayload | undefined;
 
     if (!jwtUser || !jwtUser.sub) {
-      throw new UnauthorizedException('Access denied: platform user is not authenticated');
+      throw new UnauthorizedException(AUTH_ERRORS.UNAUTHENTICATED);
     }
 
     // Query active state from MongoDB
@@ -44,7 +45,7 @@ export class PlatformPermissionsGuard implements CanActivate {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Platform user is inactive or not found');
+      throw new UnauthorizedException(AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND);
     }
 
     // Business rule: platform_owner always has full unrestricted access
@@ -67,6 +68,6 @@ export class PlatformPermissionsGuard implements CanActivate {
       return true;
     }
 
-    throw new ForbiddenException('Unauthorized user role on platform');
+    throw new ForbiddenException(AUTH_ERRORS.UNAUTHORIZED_ROLE);
   }
 }

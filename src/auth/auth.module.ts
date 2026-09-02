@@ -10,21 +10,27 @@ import { PlatformJwtAuthGuard } from './guards/platform-jwt-auth.guard.js';
 import { PlatformPermissionsGuard } from './guards/platform-permissions.guard.js';
 import { TokenService } from './services/token.service.js';
 import { GoogleAuthService } from './services/google-auth.service.js';
+import {
+  AUTH_CONFIG,
+  AUTH_ENV_KEYS,
+  AUTH_ERRORS,
+} from './constants/auth.constants.js';
 
 @Module({
   imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({ defaultStrategy: AUTH_CONFIG.STRATEGY_JWT }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => {
-        const secret = config.get<string>('JWT_ACCESS_SECRET');
+        const secret = config.get<string>(AUTH_ENV_KEYS.JWT_ACCESS_SECRET);
         if (!secret) {
-          throw new Error('JWT_ACCESS_SECRET must be configured in environment variables');
+          throw new Error(AUTH_ERRORS.JWT_SECRET_NOT_CONFIGURED);
         }
         return {
           secret,
           signOptions: {
-            expiresIn: (config.get<string>('JWT_ACCESS_EXPIRES_IN') || '1h') as any,
+            expiresIn: (config.get<string>(AUTH_ENV_KEYS.JWT_ACCESS_EXPIRES_IN) ||
+              AUTH_CONFIG.DEFAULT_JWT_EXPIRES_IN) as any,
           },
         };
       },
