@@ -16,6 +16,19 @@ enum PlatformRole {
   platform_operator
 }
 
+enum ModuleCatalogKind {
+  module
+  page
+  feature
+}
+
+enum ModuleCatalogStatus {
+  draft
+  active
+  toBeDeprecated
+  deprecated
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -98,4 +111,49 @@ model RefreshSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_sessions")
+}
+
+// Global, platform-scoped definition of modules, pages and features.
+// No tenantId — tenant activation is stored separately (future issue).
+model ModuleCatalogEntry {
+  id                   String              @id @default(auto()) @map("_id") @db.ObjectId
+  key                  String              @unique        // e.g. "services.bookings.photo_upload"
+  kind                 ModuleCatalogKind
+  moduleKey            String
+  sectionKey           String
+  pageKey              String?
+  scope                String              @default("platform") // platform | tenant | public
+  name                 String
+  description          String?
+  status               ModuleCatalogStatus @default(draft)
+  isArchived           Boolean             @default(false)
+
+  // Maintenance — orthogonal to status; a module can be active + under maintenance
+  maintenanceEnabled   Boolean             @default(false)
+  maintenanceMessage   String?
+  maintenanceStartsAt  DateTime?
+  maintenanceEndsAt    DateTime?
+  maintenanceChangedBy String?             @db.ObjectId
+
+  version              Int                 @default(1)
+  dependencies         String[]            @default([])
+  requiredPermissions  String[]            @default([])
+  availability         Json?               // { plans: string[], requiresSubscription: boolean }
+  compatibility        Json?               // { minVersion: string, maxVersion?: string }
+  metadata             Json?
+
+  // Source metadata
+  ownerTeam            String?
+  manifest             String?
+  autoDiscovered       Boolean             @default(false)
+  catalogVersion       String?
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@index([kind])
+  @@index([status, isArchived])
+  @@index([sectionKey, pageKey])
+  @@index([moduleKey])
+  @@map("module_catalog")
 }
