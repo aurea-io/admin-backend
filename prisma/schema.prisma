@@ -40,6 +40,48 @@ model PlatformUser {
   @@map("platform_users")
 }
 
+// Platform-owned catalog. These collections are shared with the tenant API,
+// but are managed exclusively from the internal backoffice.
+model PlatformTenant {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  slug              String   @unique
+  name              String
+  vertical          String
+  isActive          Boolean  @default(true)
+  maintenanceMode   Boolean  @default(false)
+  maintenanceMessage String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("tenants")
+}
+
+model PlatformPlan {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  key             String   @unique
+  name            String
+  description     String?
+  includedFeatures String[] @default([])
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("plans")
+}
+
+model PlatformFeature {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  label       String
+  description String?
+  scope       String   @default("platform")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("platform_features")
+}
+
 model RefreshSession {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
