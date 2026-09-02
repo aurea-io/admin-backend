@@ -7,8 +7,7 @@ import { AuthService } from '../src/auth/auth.service.js';
 describe('AuthService', () => {
   let authService: AuthService;
   let mockPrisma: any;
-  let mockJwt: any;
-  let mockConfig: any;
+  let mockTokenService: any;
 
   const testPassword = 'Password123!';
   let testPasswordHash: string;
@@ -23,19 +22,11 @@ describe('AuthService', () => {
       },
     };
 
-    mockJwt = {
-      signAsync: vi.fn().mockResolvedValue('mock-jwt-token'),
+    mockTokenService = {
+      generatePlatformToken: vi.fn().mockResolvedValue('mock-jwt-token'),
     };
 
-    mockConfig = {
-      get: vi.fn((key: string) => {
-        if (key === 'JWT_ACCESS_SECRET') return 'test-secret';
-        if (key === 'JWT_ACCESS_EXPIRES_IN') return '1h';
-        return null;
-      }),
-    };
-
-    authService = new AuthService(mockPrisma, mockJwt, mockConfig);
+    authService = new AuthService(mockPrisma, mockTokenService);
   });
 
   describe('login', () => {

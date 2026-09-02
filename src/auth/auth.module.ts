@@ -9,6 +9,8 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { PlatformJwtAuthGuard } from './guards/platform-jwt-auth.guard.js';
 import { PlatformPermissionsGuard } from './guards/platform-permissions.guard.js';
 
+import { TokenService } from './services/token.service.js';
+
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -27,12 +29,14 @@ import { PlatformPermissionsGuard } from './guards/platform-permissions.guard.js
   controllers: [AuthController],
   providers: [
     AuthService,
+    TokenService,
     JwtStrategy,
     PlatformJwtAuthGuard,
     PlatformPermissionsGuard,
   ],
   exports: [
     AuthService,
+    TokenService,
     JwtModule,
     PassportModule,
     PlatformJwtAuthGuard,
