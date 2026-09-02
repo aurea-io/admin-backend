@@ -92,6 +92,9 @@ export class AuthController {
     const configuredSameSite = process.env.COOKIE_SAME_SITE?.toLowerCase();
     const sameSite = configuredSameSite === 'none' ? 'none' : configuredSameSite === 'strict' ? 'strict' : 'lax';
     if (sameSite === 'none' && !secure) throw new Error('COOKIE_SAME_SITE=none requires COOKIE_SECURE=true');
+    if (sameSite === 'none') {
+      throw new Error('COOKIE_SAME_SITE=none requires Origin validation and CSRF protection, which are not configured');
+    }
     return { httpOnly: true, secure, sameSite, path: '/api/v1/auth', maxAge: this.refreshCookieMaxAge() } as const;
   }
 

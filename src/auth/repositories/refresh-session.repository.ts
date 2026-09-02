@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { PLATFORM_USER_SAFE_SELECT } from '../constants/auth.constants.js';
 
 @Injectable()
 export class RefreshSessionRepository {
@@ -12,7 +13,7 @@ export class RefreshSessionRepository {
   findByHash(tokenHash: string) {
     return this.prisma.refreshSession.findUnique({
       where: { tokenHash },
-      include: { user: true },
+      include: { user: { select: PLATFORM_USER_SAFE_SELECT } },
     });
   }
 

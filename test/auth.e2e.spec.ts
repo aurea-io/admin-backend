@@ -76,9 +76,13 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
           refreshSessions.push(session);
           return Promise.resolve(session);
         }),
-        findUnique: vi.fn().mockImplementation(({ where }) => {
+        findUnique: vi.fn().mockImplementation(({ where, include }) => {
           const session = refreshSessions.find((item) => item.tokenHash === where.tokenHash);
-          return Promise.resolve(session ? { ...session, user: { ...mockOwner } } : null);
+          if (!session) return Promise.resolve(null);
+          const user = include?.user?.select
+            ? Object.fromEntries(Object.keys(include.user.select).map((key) => [key, (mockOwner as any)[key]]))
+            : { ...mockOwner };
+          return Promise.resolve({ ...session, user });
         }),
         updateMany: vi.fn().mockImplementation(({ where, data }) => {
           const matching = refreshSessions.filter((item) =>
@@ -170,6 +174,7 @@ describe('Auth Endpoints (E2E / HTTP Integration)', () => {
       .set('Cookie', firstCookie)
       .expect(200);
     expect(refreshed.body.accessToken).toBeTruthy();
+    expect(refreshed.body.user.passwordHash).toBeUndefined();
     const secondCookie = refreshed.headers['set-cookie'][0].split(';')[0];
     expect(secondCookie).not.toBe(firstCookie);
 
