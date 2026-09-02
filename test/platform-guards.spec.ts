@@ -9,18 +9,16 @@ describe('Platform Guards & Security Strategy', () => {
   describe('PlatformPermissionsGuard', () => {
     let guard: PlatformPermissionsGuard;
     let mockReflector: any;
-    let mockPrisma: any;
+    let mockPlatformUserRepository: any;
 
     beforeEach(() => {
       mockReflector = {
         getAllAndOverride: vi.fn(),
       };
-      mockPrisma = {
-        platformUser: {
-          findUnique: vi.fn(),
-        },
+      mockPlatformUserRepository = {
+        findById: vi.fn(),
       };
-      guard = new PlatformPermissionsGuard(mockReflector, mockPrisma);
+      guard = new PlatformPermissionsGuard(mockReflector, mockPlatformUserRepository);
     });
 
     function createMockContext(userPayload?: any): ExecutionContext {
@@ -55,7 +53,7 @@ describe('Platform Guards & Security Strategy', () => {
       mockReflector.getAllAndOverride.mockReturnValue(['tenants:delete', 'system:restart']);
       const context = createMockContext({ sub: 'owner-id' });
 
-      mockPrisma.platformUser.findUnique.mockResolvedValue({
+      mockPlatformUserRepository.findById.mockResolvedValue({
         id: 'owner-id',
         role: PlatformRole.platform_owner,
         allowedFeatures: [], // Empty features array, but role is platform_owner
@@ -70,7 +68,7 @@ describe('Platform Guards & Security Strategy', () => {
       mockReflector.getAllAndOverride.mockReturnValue(['modules:read', 'tenants:read']);
       const context = createMockContext({ sub: 'operator-id' });
 
-      mockPrisma.platformUser.findUnique.mockResolvedValue({
+      mockPlatformUserRepository.findById.mockResolvedValue({
         id: 'operator-id',
         role: PlatformRole.platform_operator,
         allowedFeatures: ['modules:read', 'tenants:read', 'audit:read'],
@@ -85,7 +83,7 @@ describe('Platform Guards & Security Strategy', () => {
       mockReflector.getAllAndOverride.mockReturnValue(['tenants:delete']);
       const context = createMockContext({ sub: 'operator-id' });
 
-      mockPrisma.platformUser.findUnique.mockResolvedValue({
+      mockPlatformUserRepository.findById.mockResolvedValue({
         id: 'operator-id',
         role: PlatformRole.platform_operator,
         allowedFeatures: ['tenants:read', 'modules:read'],
@@ -99,7 +97,7 @@ describe('Platform Guards & Security Strategy', () => {
       mockReflector.getAllAndOverride.mockReturnValue(['modules:read']);
       const context = createMockContext({ sub: 'operator-id' });
 
-      mockPrisma.platformUser.findUnique.mockResolvedValue({
+      mockPlatformUserRepository.findById.mockResolvedValue({
         id: 'operator-id',
         role: PlatformRole.platform_operator,
         allowedFeatures: ['modules:read'],
@@ -113,18 +111,16 @@ describe('Platform Guards & Security Strategy', () => {
   describe('JwtStrategy & tokenVersion Revocation', () => {
     let jwtStrategy: JwtStrategy;
     let mockConfig: any;
-    let mockPrisma: any;
+    let mockPlatformUserRepository: any;
 
     beforeEach(() => {
       mockConfig = {
         get: vi.fn().mockReturnValue('test-jwt-secret'),
       };
-      mockPrisma = {
-        platformUser: {
-          findUnique: vi.fn(),
-        },
+      mockPlatformUserRepository = {
+        findById: vi.fn(),
       };
-      jwtStrategy = new JwtStrategy(mockConfig, mockPrisma);
+      jwtStrategy = new JwtStrategy(mockConfig, mockPlatformUserRepository);
     });
 
     it('should validate and return user payload when token is valid and tokenVersion matches', async () => {
@@ -137,7 +133,7 @@ describe('Platform Guards & Security Strategy', () => {
         scope: 'platform',
       };
 
-      mockPrisma.platformUser.findUnique.mockResolvedValue({
+      mockPlatformUserRepository.findById.mockResolvedValue({
         id: 'user-1',
         email: 'owner@aurea.io',
         name: 'Owner',
@@ -175,7 +171,7 @@ describe('Platform Guards & Security Strategy', () => {
         scope: 'platform',
       };
 
-      mockPrisma.platformUser.findUnique.mockResolvedValue({
+      mockPlatformUserRepository.findById.mockResolvedValue({
         id: 'user-1',
         email: 'owner@aurea.io',
         name: 'Owner',
@@ -198,7 +194,7 @@ describe('Platform Guards & Security Strategy', () => {
         scope: 'platform',
       };
 
-      mockPrisma.platformUser.findUnique.mockResolvedValue({
+      mockPlatformUserRepository.findById.mockResolvedValue({
         id: 'user-1',
         isActive: false,
         tokenVersion: 1,

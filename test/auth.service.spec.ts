@@ -223,6 +223,43 @@ describe('AuthService', () => {
   });
 
   describe('changePassword', () => {
+    it('should validate the current password before changing it', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'admin@aurea.io',
+        passwordHash: testPasswordHash,
+        tokenVersion: 1,
+        isActive: true,
+      };
+
+      mockPlatformUserRepository.findById.mockResolvedValue(mockUser);
+      mockPlatformUserRepository.updatePassword.mockResolvedValue({
+        ...mockUser,
+        tokenVersion: 2,
+        passwordHash: 'new-hashed-password',
+      });
+
+      await authService.changePassword('user-1', {
+        currentPassword: testPassword,
+        newPassword: 'BrandNewPassword456!',
+      });
+
+      expect(mockPlatformUserRepository.findById).toHaveBeenCalledWith('user-1', {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        allowedFeatures: true,
+        isActive: true,
+        tokenVersion: true,
+        passwordHash: true,
+      });
+      expect(mockPlatformUserRepository.updatePassword).toHaveBeenCalledWith(
+        'user-1',
+        expect.any(String),
+      );
+    });
+
     it('should change password, increment tokenVersion and reissue token', async () => {
       const mockUser = {
         id: 'user-1',

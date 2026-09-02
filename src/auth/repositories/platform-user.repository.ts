@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import type { PlatformUser } from '@prisma/client';
+import type { PlatformUser, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { PLATFORM_USER_SAFE_SELECT } from '../constants/auth.constants.js';
+
+type SafePlatformUser = Prisma.PlatformUserGetPayload<{
+  select: typeof PLATFORM_USER_SAFE_SELECT;
+}>;
 
 @Injectable()
 export class PlatformUserRepository {
@@ -13,11 +17,14 @@ export class PlatformUserRepository {
     });
   }
 
-  async findById(id: string, select = PLATFORM_USER_SAFE_SELECT): Promise<PlatformUser | null> {
+  async findById<T extends Prisma.PlatformUserSelect | undefined>(
+    id: string,
+    select: T = PLATFORM_USER_SAFE_SELECT as T,
+  ): Promise<Prisma.PlatformUserGetPayload<{ select: T }> | null> {
     return this.prisma.platformUser.findUnique({
       where: { id },
-      select,
-    });
+      select: select ?? undefined,
+    }) as Prisma.PlatformUserGetPayload<{ select: T }> | null;
   }
 
   async findByGoogleId(googleId: string): Promise<PlatformUser | null> {
@@ -26,12 +33,12 @@ export class PlatformUserRepository {
     });
   }
 
-  async updateLastLogin(userId: string): Promise<PlatformUser> {
+  async updateLastLogin(userId: string): Promise<SafePlatformUser> {
     return this.prisma.platformUser.update({
       where: { id: userId },
       data: { lastLoginAt: new Date() },
       select: PLATFORM_USER_SAFE_SELECT,
-    });
+    }) as Promise<SafePlatformUser>;
   }
 
   async updateGoogleId(userId: string, googleId: string): Promise<PlatformUser> {
@@ -41,7 +48,7 @@ export class PlatformUserRepository {
     });
   }
 
-  async updatePassword(userId: string, passwordHash: string): Promise<PlatformUser> {
+  async updatePassword(userId: string, passwordHash: string): Promise<SafePlatformUser> {
     return this.prisma.platformUser.update({
       where: { id: userId },
       data: {
@@ -49,6 +56,6 @@ export class PlatformUserRepository {
         tokenVersion: { increment: 1 },
       },
       select: PLATFORM_USER_SAFE_SELECT,
-    });
+    }) as Promise<SafePlatformUser>;
   }
 }

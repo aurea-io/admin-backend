@@ -80,7 +80,16 @@ export class AuthService {
    */
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = this.requireActiveUser(
-      await this.platformUserRepository.findById(userId),
+      await this.platformUserRepository.findById(userId, {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        allowedFeatures: true,
+        isActive: true,
+        tokenVersion: true,
+        passwordHash: true,
+      }),
       AUTH_ERRORS.USER_INACTIVE_OR_NOT_FOUND,
     );
 
