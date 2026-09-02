@@ -29,4 +29,16 @@ describe('Platform User Model & Types', () => {
     expect(mockUser.googleId).toBe('google-oauth-id-12345');
     expect(mockUser.tokenVersion).toBe(1);
   });
+
+  it('should define ModuleCatalogKind and ModuleCatalogStatus enums', async () => {
+    const { ModuleCatalogKind, ModuleCatalogStatus } = await import('@prisma/client');
+    expect(ModuleCatalogKind.module).toBe('module');
+    expect(ModuleCatalogKind.page).toBe('page');
+    expect(ModuleCatalogKind.feature).toBe('feature');
+
+    expect(ModuleCatalogStatus.draft).toBe('draft');
+    expect(ModuleCatalogStatus.active).toBe('active');
+    expect(ModuleCatalogStatus.toBeDeprecated).toBe('toBeDeprecated');
+    expect(ModuleCatalogStatus.deprecated).toBe('deprecated');
+  });
 });
