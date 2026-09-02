@@ -30,7 +30,7 @@ export class PlatformJwtAuthGuard extends AuthGuard('jwt') {
     _info: unknown,
   ): TUser {
     if (err || !user) {
-      throw new UnauthorizedException('Token de acceso de plataforma inválido o ausente');
+      throw new UnauthorizedException('Invalid or missing platform access token');
     }
     return user;
   }

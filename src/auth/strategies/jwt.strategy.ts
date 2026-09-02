@@ -13,7 +13,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   ) {
     const secret = config.get<string>('JWT_ACCESS_SECRET');
     if (!secret) {
-      throw new Error('JWT_ACCESS_SECRET debe estar configurado en las variables de entorno');
+      throw new Error('JWT_ACCESS_SECRET must be configured in environment variables');
     }
 
     super({
@@ -25,10 +25,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   async validate(payload: PlatformJwtPayload): Promise<PlatformJwtPayload> {
     if (!payload.sub || !payload.email || payload.scope !== 'platform') {
-      throw new UnauthorizedException('Token de plataforma inválido o de scope incorrecto');
+      throw new UnauthorizedException('Invalid platform token or invalid token scope');
     }
 
-    // Backend es la fuente de verdad: validación en tiempo real contra MongoDB
+    // Backend is the source of truth: real-time validation against MongoDB
     const user = await this.prisma.platformUser.findUnique({
       where: { id: payload.sub },
       select: {
@@ -43,12 +43,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Usuario de plataforma inactivo o no encontrado');
+      throw new UnauthorizedException('Platform user is inactive or not found');
     }
 
-    // Revocación instantánea por tokenVersion (por cambio de password o reseteo de sesiones)
+    // Instant session revocation via tokenVersion comparison
     if (user.tokenVersion !== payload.tokenVersion) {
-      throw new UnauthorizedException('La sesión ha sido revocada o ha expirado');
+      throw new UnauthorizedException('Session has been revoked or expired');
     }
 
     return {

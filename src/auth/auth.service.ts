@@ -25,7 +25,7 @@ export class AuthService {
   ) {}
 
   /**
-   * Realiza la autenticación mediante email y contraseña con hash seguro.
+   * Authenticates a platform user using email and password.
    */
   async login(dto: LoginDto) {
     const email = dto.email.toLowerCase().trim();
@@ -36,12 +36,12 @@ export class AuthService {
     const isPasswordValid = await PasswordUtil.compare(dto.password, user?.passwordHash);
 
     if (!user || !isPasswordValid || !user.isActive) {
-      this.logger.warn('Intento de login fallido: credenciales inválidas o usuario inactivo');
-      throw new UnauthorizedException('Correo electrónico o contraseña incorrectos');
+      this.logger.warn('Login attempt failed: invalid credentials or inactive account');
+      throw new UnauthorizedException('Invalid email address or password');
     }
 
     const updatedUser = await this.touchLastLogin(user.id);
-    this.logger.log(`Usuario de plataforma autenticado (ID: ${updatedUser.id}, Rol: ${updatedUser.role})`);
+    this.logger.log(`Platform user authenticated (ID: ${updatedUser.id}, Role: ${updatedUser.role})`);
 
     const accessToken = await this.tokenService.generatePlatformToken(updatedUser);
 
@@ -52,19 +52,19 @@ export class AuthService {
   }
 
   /**
-   * Autenticación y vinculación transparente de cuentas Google OAuth a partir de idToken verificado.
+   * Authenticates and links a Google OAuth account from a verified ID token.
    */
   async loginWithGoogle(dto: GoogleLoginDto) {
     const verifiedGoogleUser = await this.googleAuthService.verifyIdToken(dto.idToken);
     const user = await this.resolveAndLinkGoogleUser(verifiedGoogleUser);
 
     if (!user || !user.isActive) {
-      this.logger.warn('Intento de login con Google no autorizado o cuenta inactiva');
-      throw new UnauthorizedException('Usuario de plataforma no encontrado o no autorizado');
+      this.logger.warn('Google login attempt failed: unauthorized or inactive platform account');
+      throw new UnauthorizedException('Platform user not found or not authorized');
     }
 
     const updatedUser = await this.touchLastLogin(user.id);
-    this.logger.log(`Usuario autenticado vía Google (ID: ${updatedUser.id})`);
+    this.logger.log(`Platform user authenticated via Google (ID: ${updatedUser.id})`);
 
     const accessToken = await this.tokenService.generatePlatformToken(updatedUser);
 
@@ -75,7 +75,7 @@ export class AuthService {
   }
 
   /**
-   * Actualiza la contraseña del usuario e incrementa tokenVersion revocando sesiones activas.
+   * Updates platform user password and increments tokenVersion to revoke other sessions.
    */
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.prisma.platformUser.findUnique({
@@ -83,13 +83,13 @@ export class AuthService {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Usuario no encontrado o inactivo');
+      throw new UnauthorizedException('Platform user not found or inactive');
     }
 
     if (user.passwordHash) {
       const isCurrentValid = await PasswordUtil.compare(dto.currentPassword, user.passwordHash);
       if (!isCurrentValid) {
-        throw new BadRequestException('La contraseña actual es incorrecta');
+        throw new BadRequestException('Current password is incorrect');
       }
     }
 
@@ -105,13 +105,13 @@ export class AuthService {
     });
 
     this.logger.log(
-      `Contraseña cambiada para usuario ID: ${updatedUser.id}. tokenVersion: ${updatedUser.tokenVersion}`,
+      `Password changed for user ID: ${updatedUser.id}. tokenVersion incremented to ${updatedUser.tokenVersion}`,
     );
 
     const accessToken = await this.tokenService.generatePlatformToken(updatedUser);
 
     return {
-      message: 'Contraseña actualizada exitosamente. Otras sesiones activas han sido invalidadas.',
+      message: 'Password updated successfully. Other active sessions have been revoked.',
       tokenVersion: updatedUser.tokenVersion,
       accessToken,
       user: updatedUser,
@@ -119,7 +119,7 @@ export class AuthService {
   }
 
   /**
-   * Retorna los datos del perfil de plataforma sanitizados.
+   * Retrieves sanitized profile information for the authenticated platform user.
    */
   async getProfile(userId: string) {
     const user = await this.prisma.platformUser.findUnique({
@@ -128,13 +128,13 @@ export class AuthService {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Usuario de plataforma no encontrado o inactivo');
+      throw new UnauthorizedException('Platform user not found or inactive');
     }
 
     return user;
   }
 
-  // ── Helpers Privados ────────────────────────────────────────────────────────
+  // ── Private Helpers ─────────────────────────────────────────────────────────
 
   private async touchLastLogin(userId: string) {
     return this.prisma.platformUser.update({
@@ -147,7 +147,7 @@ export class AuthService {
   private async resolveAndLinkGoogleUser(googleUser: VerifiedGoogleUser): Promise<PlatformUser | null> {
     const { googleId, email } = googleUser;
 
-    // 1. Buscar por googleId verificado
+    // 1. Check by verified googleId
     let user = await this.prisma.platformUser.findUnique({
       where: { googleId },
     });
@@ -156,7 +156,7 @@ export class AuthService {
       return user;
     }
 
-    // 2. Buscar por email y vincular googleId si la cuenta existe provisionada
+    // 2. Check by email and link googleId if the provisioned user account exists
     user = await this.prisma.platformUser.findUnique({
       where: { email },
     });
@@ -166,7 +166,7 @@ export class AuthService {
         where: { id: user.id },
         data: { googleId },
       });
-      this.logger.log(`Cuenta Google vinculada a usuario existente (ID: ${user.id})`);
+      this.logger.log(`Google account linked to existing platform user (ID: ${user.id})`);
     }
 
     return user;

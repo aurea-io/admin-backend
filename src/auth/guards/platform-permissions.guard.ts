@@ -25,7 +25,7 @@ export class PlatformPermissionsGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    // Si no se exigen features específicas en la ruta, se permite continuar
+    // If no specific features are required on this route, allow access
     if (!requiredFeatures || requiredFeatures.length === 0) {
       return true;
     }
@@ -34,25 +34,25 @@ export class PlatformPermissionsGuard implements CanActivate {
     const jwtUser = request['user'] as PlatformJwtPayload | undefined;
 
     if (!jwtUser || !jwtUser.sub) {
-      throw new UnauthorizedException('Acceso denegado: usuario de plataforma no autenticado');
+      throw new UnauthorizedException('Access denied: platform user is not authenticated');
     }
 
-    // Consultamos el estado real y vigente en MongoDB
+    // Query active state from MongoDB
     const user = await this.prisma.platformUser.findUnique({
       where: { id: jwtUser.sub },
       select: { role: true, allowedFeatures: true, isActive: true },
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Usuario de plataforma inactivo o no encontrado');
+      throw new UnauthorizedException('Platform user is inactive or not found');
     }
 
-    // Regla de Negocio: platform_owner tiene acceso total e irrestricto siempre
+    // Business rule: platform_owner always has full unrestricted access
     if (user.role === PlatformRole.platform_owner) {
       return true;
     }
 
-    // Regla de Negocio: platform_operator requiere validación granular sobre allowedFeatures
+    // Business rule: platform_operator requires granular allowedFeatures match
     if (user.role === PlatformRole.platform_operator) {
       const hasAllFeatures = requiredFeatures.every((feature) =>
         user.allowedFeatures.includes(feature),
@@ -60,13 +60,13 @@ export class PlatformPermissionsGuard implements CanActivate {
 
       if (!hasAllFeatures) {
         throw new ForbiddenException(
-          `Acceso denegado: permisos de plataforma insuficientes para [${requiredFeatures.join(', ')}]`,
+          `Access denied: insufficient platform permissions for [${requiredFeatures.join(', ')}]`,
         );
       }
 
       return true;
     }
 
-    throw new ForbiddenException('Rol de usuario no autorizado en plataforma');
+    throw new ForbiddenException('Unauthorized user role on platform');
   }
 }

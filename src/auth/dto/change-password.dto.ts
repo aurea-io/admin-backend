@@ -1,12 +1,12 @@
 import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class ChangePasswordDto {
-  @IsString({ message: 'La contraseña actual debe ser una cadena de texto' })
-  @IsNotEmpty({ message: 'La contraseña actual es requerida' })
+  @IsString({ message: 'Current password must be a string' })
+  @IsNotEmpty({ message: 'Current password is required' })
   currentPassword: string;
 
-  @IsString({ message: 'La nueva contraseña debe ser una cadena de texto' })
-  @MinLength(6, { message: 'La nueva contraseña debe tener al menos 6 caracteres' })
-  @IsNotEmpty({ message: 'La nueva contraseña es requerida' })
+  @IsString({ message: 'New password must be a string' })
+  @MinLength(6, { message: 'New password must be at least 6 characters long' })
+  @IsNotEmpty({ message: 'New password is required' })
   newPassword: string;
 }

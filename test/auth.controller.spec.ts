@@ -78,7 +78,7 @@ describe('AuthController', () => {
       newPassword: 'NewPassword123!',
     };
     mockAuthService.changePassword.mockResolvedValue({
-      message: 'Contraseña actualizada exitosamente.',
+      message: 'Password updated successfully. Other active sessions have been revoked.',
       tokenVersion: 2,
       accessToken: 'new-token',
     });

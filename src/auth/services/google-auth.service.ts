@@ -19,7 +19,7 @@ export class GoogleAuthService {
    */
   async verifyIdToken(idToken: string): Promise<VerifiedGoogleUser> {
     if (!idToken) {
-      throw new UnauthorizedException('Token de Google no proporcionado');
+      throw new UnauthorizedException('Google ID token was not provided');
     }
 
     try {
@@ -28,20 +28,20 @@ export class GoogleAuthService {
       );
 
       if (!response.ok) {
-        throw new UnauthorizedException('Token de Google inválido o expirado');
+        throw new UnauthorizedException('Invalid or expired Google ID token');
       }
 
       const payload = await response.json();
 
       if (!payload.sub || !payload.email) {
-        throw new UnauthorizedException('Claims de Google incompletos o corruptos');
+        throw new UnauthorizedException('Incomplete or malformed claims in Google token');
       }
 
       // Optional Google Client ID audience verification if configured
       const expectedAudience = this.config.get<string>('GOOGLE_CLIENT_ID');
       if (expectedAudience && payload.aud !== expectedAudience) {
-        this.logger.warn('Audiencia del token de Google no coincide con GOOGLE_CLIENT_ID');
-        throw new UnauthorizedException('Audiencia del token de Google inválida');
+        this.logger.warn('Google token audience does not match GOOGLE_CLIENT_ID');
+        throw new UnauthorizedException('Invalid Google token audience');
       }
 
       return {
@@ -53,8 +53,8 @@ export class GoogleAuthService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      this.logger.error(`Error verificando token de Google: ${(error as Error).message}`);
-      throw new UnauthorizedException('Fallo al validar credenciales con Google');
+      this.logger.error(`Error verifying Google token: ${(error as Error).message}`);
+      throw new UnauthorizedException('Failed to validate credentials with Google');
     }
   }
 }

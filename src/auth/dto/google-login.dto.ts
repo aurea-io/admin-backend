@@ -1,7 +1,7 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
 export class GoogleLoginDto {
-  @IsString({ message: 'El token de Google (idToken) debe ser una cadena de texto' })
-  @IsNotEmpty({ message: 'El token de Google (idToken) es requerido' })
+  @IsString({ message: 'Google token (idToken) must be a string' })
+  @IsNotEmpty({ message: 'Google token (idToken) is required' })
   idToken: string;
 }

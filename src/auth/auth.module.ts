@@ -19,7 +19,7 @@ import { GoogleAuthService } from './services/google-auth.service.js';
       useFactory: (config: ConfigService) => {
         const secret = config.get<string>('JWT_ACCESS_SECRET');
         if (!secret) {
-          throw new Error('JWT_ACCESS_SECRET debe estar configurado en las variables de entorno');
+          throw new Error('JWT_ACCESS_SECRET must be configured in environment variables');
         }
         return {
           secret,

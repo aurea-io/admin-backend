@@ -23,7 +23,7 @@ export class TokenService {
   ) {
     const secret = config.get<string>('JWT_ACCESS_SECRET');
     if (!secret) {
-      throw new Error('JWT_ACCESS_SECRET debe estar configurado en las variables de entorno');
+      throw new Error('JWT_ACCESS_SECRET must be configured in environment variables');
     }
     this.secret = secret;
     this.expiresIn = config.get<string>('JWT_ACCESS_EXPIRES_IN') || '1h';
