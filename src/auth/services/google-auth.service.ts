@@ -15,14 +15,10 @@ export interface VerifiedGoogleUser {
 @Injectable()
 export class GoogleAuthService {
   private readonly logger = new Logger(GoogleAuthService.name);
-  private readonly expectedAudience: string;
+  private readonly expectedAudience?: string;
 
   constructor(private readonly config: ConfigService) {
-    const expectedAudience = config.get<string>(AUTH_ENV_KEYS.GOOGLE_CLIENT_ID);
-    if (!expectedAudience) {
-      throw new Error(AUTH_ERRORS.GOOGLE_CLIENT_ID_NOT_CONFIGURED);
-    }
-    this.expectedAudience = expectedAudience;
+    this.expectedAudience = config.get<string>(AUTH_ENV_KEYS.GOOGLE_CLIENT_ID);
   }
 
   /**
@@ -30,6 +26,9 @@ export class GoogleAuthService {
    * and derives identity fields (sub, email, name) exclusively from verified claims.
    */
   async verifyIdToken(idToken: string): Promise<VerifiedGoogleUser> {
+    if (!this.expectedAudience) {
+      throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_CLIENT_ID_NOT_CONFIGURED);
+    }
     if (!idToken) {
       throw new UnauthorizedException(AUTH_ERRORS.GOOGLE_TOKEN_NOT_PROVIDED);
     }
