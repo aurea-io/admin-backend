@@ -1,0 +1,169 @@
+name: Build and deploy admin-backend
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: Release tag to deploy
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-admin-backend-production
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/aurea-io/aurea-admin-backend
+  CONTAINER_NAME: aurea-backend
+  APP_PORT: '3001'
+
+jobs:
+  verify:
+    name: Verify backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.release-tag || github.event.release.tag_name || github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx --no-install prisma generate
+      - run: npm test
+      - run: npm run build
+
+  publish:
+    name: Publish Docker image
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      revision: ${{ steps.revision.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.release-tag || github.event.release.tag_name || github.ref }}
+      - name: Capture deployed revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
+        id: meta
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,format=long,prefix=sha-
+            type=raw,value=latest
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: AUREA_COMMIT_ID=${{ steps.revision.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    environment: production
+    name: Deploy backend to Render
+    needs: publish
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.config.outputs.configured }}
+      reason: ${{ steps.config.outputs.reason }}
+    steps:
+      - name: Check Render configuration
+        id: config
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [[ -n "$RENDER_DEPLOY_HOOK_URL" ]]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo 'reason=Falta el secret RENDER_DEPLOY_HOOK_URL en el repositorio o en la organización.' >> "$GITHUB_OUTPUT"
+            echo 'Deploy backend omitido: falta RENDER_DEPLOY_HOOK_URL.'
+          fi
+      - name: Trigger Render deploy
+        if: steps.config.outputs.configured == 'true'
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
+
+  smoke-test:
+    name: Smoke test backend
+    if: ${{ always() && needs.deploy.result == 'success' && needs.deploy.outputs.configured == 'true' }}
+    needs: [deploy, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      BACKEND_URL: ${{ vars.BACKEND_URL || 'https://aurea-admin-backend.onrender.com' }}
+      EXPECTED_COMMIT: ${{ needs.publish.outputs.revision }}
+    steps:
+      - name: Wait for backend health
+        run: |
+          set -euo pipefail
+          for attempt in {1..16}; do
+            response=$(curl --fail --silent --show-error --max-time 15 "${BACKEND_URL}/api/health/live" || true)
+            if grep -q '"status":"ok"' <<<"${response}" && grep -q "\"commit\":\"${EXPECTED_COMMIT}\"" <<<"${response}"; then exit 0; fi
+            sleep 15
+          done
+          echo "Backend health check failed at ${BACKEND_URL}/api/health/live" >&2
+          exit 1
+
+  notify-image:
+    name: Notify image
+    if: ${{ always() && needs.verify.result != 'skipped' }}
+    needs: [verify, publish]
+    uses: aurea-io/aurea-ci/.github/workflows/notify.yml@main
+    with:
+      event-type: image
+      environment: production
+      image: ghcr.io/aurea-io/aurea-admin-backend
+      version: ${{ inputs.release-tag || github.event.release.tag_name || format('manual-{0}', github.run_number) }}
+      source-commit: ${{ needs.publish.outputs.revision }}
+      commit-message: ${{ github.event.release.name || github.event.release.tag_name || github.event.head_commit.message || 'workflow dispatch' }}
+      status: ${{ needs.publish.result == 'success' && needs.verify.result == 'success' && 'success' || 'failure' }}
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+      DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  notify-deploy:
+    name: Notify deploy
+    if: ${{ always() && needs.deploy.result != 'skipped' }}
+    needs: [publish, deploy, smoke-test, notify-image]
+    uses: aurea-io/aurea-ci/.github/workflows/notify.yml@main
+    with:
+      event-type: deploy
+      environment: production
+      version: ${{ inputs.release-tag || github.event.release.tag_name || format('manual-{0}', github.run_number) }}
+      source-commit: ${{ needs.publish.outputs.revision }}
+      commit-message: ${{ github.event.release.name || github.event.release.tag_name || github.event.head_commit.message || 'workflow dispatch' }}
+      status: ${{ needs.deploy.outputs.configured == 'false' && 'skipped' || needs.smoke-test.result == 'success' && 'success' || 'failure' }}
+      reason: ${{ needs.deploy.outputs.configured == 'false' && needs.deploy.outputs.reason || needs.deploy.result == 'failure' && 'El deploy a Render falló.' || needs.smoke-test.result == 'failure' && 'El smoke test de salud del backend falló.' || '' }}
+      discord-message-id: ${{ needs.notify-image.outputs.discord-message-id }}
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+      DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
