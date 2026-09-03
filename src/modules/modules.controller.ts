@@ -20,6 +20,7 @@ import {
   CreateModuleDto,
   UpdateModuleDto,
   UpdateModuleStatusDto,
+  FindModulesQueryDto,
 } from './dto/index.js';
 
 @Controller('modules')
@@ -32,12 +33,8 @@ export class ModulesController {
    * Lists all non-archived catalog entries. Filterable by kind, status and sectionKey.
    */
   @Get()
-  findAll(
-    @Query('kind') kind?: ModuleCatalogKind,
-    @Query('status') status?: ModuleCatalogStatus,
-    @Query('sectionKey') sectionKey?: string,
-  ) {
-    return this.modulesService.findAll({ kind, status, sectionKey });
+  findAll(@Query() query: FindModulesQueryDto) {
+    return this.modulesService.findAll(query);
   }
 
   /**

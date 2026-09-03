@@ -256,6 +256,34 @@ describe('Modules First-Class Resource', () => {
 
         await expect(service.updateStatus('services.bookings.create', statusDto)).rejects.toThrow(BadRequestException);
       });
+
+      it('should allow maintenance-only updates without status', async () => {
+        mockRepo.findByKey.mockResolvedValue(sampleEntry);
+        mockRepo.updateStatus.mockResolvedValue({ ...sampleEntry, maintenanceEnabled: true });
+
+        const statusDto: UpdateModuleStatusDto = { maintenanceEnabled: true };
+        const result = await service.updateStatus('services.bookings.create', statusDto);
+
+        expect(result.maintenanceEnabled).toBe(true);
+        expect(mockRepo.updateStatus).toHaveBeenCalledWith(
+          'services.bookings.create',
+          expect.objectContaining({ maintenanceEnabled: true }),
+        );
+      });
+
+      it('should reject inverted maintenance date range', async () => {
+        mockRepo.findByKey.mockResolvedValue(sampleEntry);
+
+        const statusDto: UpdateModuleStatusDto = {
+          maintenanceStartsAt: '2026-09-10T12:00:00Z',
+          maintenanceEndsAt: '2026-09-09T12:00:00Z',
+        };
+
+        await expect(service.updateStatus('services.bookings.create', statusDto)).rejects.toThrow(
+          BadRequestException,
+        );
+        expect(mockRepo.updateStatus).not.toHaveBeenCalled();
+      });
     });
 
     describe('archive', () => {
@@ -274,12 +302,13 @@ describe('Modules First-Class Resource', () => {
   describe('ModulesController', () => {
     it('should route findAll to service.findAll', async () => {
       vi.spyOn(service, 'findAll').mockResolvedValue([sampleEntry]);
-      const res = await controller.findAll(ModuleCatalogKind.feature, ModuleCatalogStatus.draft, 'services');
-      expect(service.findAll).toHaveBeenCalledWith({
+      const query = {
         kind: ModuleCatalogKind.feature,
         status: ModuleCatalogStatus.draft,
         sectionKey: 'services',
-      });
+      };
+      const res = await controller.findAll(query);
+      expect(service.findAll).toHaveBeenCalledWith(query);
       expect(res).toEqual([sampleEntry]);
     });
 
@@ -363,6 +392,31 @@ describe('Modules First-Class Resource', () => {
       const contract = buildCatalogContract([manifest]);
       expect(contract.modules).toHaveLength(1);
       expect(contract.version).toBe('1.0.0');
+    });
+
+    it('should allow defining manifests with cross-domain dependencies at registration time', () => {
+      const crossDepModule = {
+        key: 'services.bookings.create',
+        label: 'Create booking',
+        section: 'services',
+        page: 'bookings',
+        scope: 'tenant' as const,
+        status: 'active' as const,
+        dependencies: ['services.bookings'],
+        compatibility: { minVersion: '1.0.0' },
+        functions: [
+          {
+            key: 'services.bookings.create.photo',
+            label: 'Photo upload',
+            scope: 'tenant' as const,
+            status: 'active' as const,
+            compatibility: { minVersion: '1.0.0' },
+          },
+        ],
+      };
+
+      const manifest = defineCatalogManifest(crossDepModule);
+      expect(manifest.key).toBe('services.bookings.create');
     });
 
     it('should throw when contract has cyclic dependencies', () => {

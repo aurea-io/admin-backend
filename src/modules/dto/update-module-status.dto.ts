@@ -8,8 +8,9 @@ import {
 import { ModuleCatalogStatus } from '@prisma/client';
 
 export class UpdateModuleStatusDto {
+  @IsOptional()
   @IsEnum(ModuleCatalogStatus)
-  status!: ModuleCatalogStatus;
+  status?: ModuleCatalogStatus;
 
   @IsOptional()
   @IsBoolean()
