@@ -1,0 +1,13 @@
+name: Security
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  security:
+    uses: aurea-io/aurea-ci/.github/workflows/security.yml@main
+    with:
+      project-type: node-backend

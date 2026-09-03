@@ -1,0 +1,11 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  actions: write
+  contents: write
+jobs:
+  release:
+    uses: aurea-io/aurea-ci/.github/workflows/release.yml@main
