@@ -7,6 +7,7 @@ import {
   Matches,
   MinLength,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ModuleCatalogKind } from '@prisma/client';
 
 const KEY_PATTERN_REGEX = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
@@ -37,6 +38,7 @@ export class CreateModuleDto {
   @IsString()
   scope?: string;
 
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(2)
   name!: string;

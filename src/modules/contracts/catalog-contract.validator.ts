@@ -37,6 +37,10 @@ export function validateCatalogContract(input: unknown): CatalogContract {
   return { version: input.version, modules };
 }
 
+export function validateCatalogModule(input: unknown): CatalogModuleContract {
+  return validateModule(input, 'module');
+}
+
 function validateModule(input: unknown, path: string): CatalogModuleContract {
   if (!isRecord(input)) throw new Error(`${path} must be an object.`);
   assertKey(input.key, `${path}.key`);
