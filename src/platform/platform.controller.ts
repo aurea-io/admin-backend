@@ -3,7 +3,7 @@ import { PlatformJwtAuthGuard } from '../auth/guards/platform-jwt-auth.guard.js'
 import { PlatformPermissionsGuard } from '../auth/guards/platform-permissions.guard.js';
 import { RequireFeatures } from '../auth/decorators/require-features.decorator.js';
 import { PlatformService } from './platform.service.js';
-import { CreatePlanDto, CreateTenantDto, UpdatePlanDto, UpdateTenantDto } from './dto/platform.dto.js';
+import { CreateTenantDto, UpdateTenantDto } from './dto/platform.dto.js';
 
 @Controller('platform')
 @UseGuards(PlatformJwtAuthGuard, PlatformPermissionsGuard)
@@ -26,19 +26,8 @@ export class PlatformController {
   @RequireFeatures('platform.tenants.write')
   updateTenant(@Param('id') id: string, @Body() dto: UpdateTenantDto) { return this.platform.updateTenant(id, dto); }
 
-  @Get('plans')
-  @RequireFeatures('platform.plans.read')
-  listPlans() { return this.platform.listPlans(); }
-
-  @Post('plans')
-  @RequireFeatures('platform.plans.write')
-  createPlan(@Body() dto: CreatePlanDto) { return this.platform.createPlan(dto); }
-
-  @Patch('plans/:id')
-  @RequireFeatures('platform.plans.write')
-  updatePlan(@Param('id') id: string, @Body() dto: UpdatePlanDto) { return this.platform.updatePlan(id, dto); }
-
   @Get('features')
   @RequireFeatures('platform.features.read')
   listFeatures() { return this.platform.listFeatures(); }
 }
+
