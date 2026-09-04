@@ -85,17 +85,54 @@ model PlatformUser {
 // Platform-owned catalog. These collections are shared with the tenant API,
 // but are managed exclusively from the internal backoffice.
 model PlatformTenant {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  slug              String   @unique
-  name              String
-  vertical          String
-  isActive          Boolean  @default(true)
-  maintenanceMode   Boolean  @default(false)
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  slug               String   @unique
+  name               String
+  vertical           String
+  status             String   @default("active")
+  planKey            String?
+  isActive           Boolean  @default(true)
+  maintenanceMode    Boolean  @default(false)
   maintenanceMessage String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
+  @@index([status, isActive])
   @@map("tenants")
+}
+
+model TenantSubscription {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId           String    @db.ObjectId
+  planKey            String
+  status             String    @default("active")
+  currentPeriodStart DateTime  @default(now())
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([tenantId, status])
+  @@map("subscriptions")
+}
+
+model TenantEntitlement {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId           String    @db.ObjectId
+  capabilityKey      String
+  effect             String    // allow | deny
+  source             String    @default("owner_override") // plan | tenant_setting | owner_override | migration
+  creditCost         Int       @default(0)
+  creditAllocationId String?
+  expiresAt          DateTime?
+  reason             String?
+  changedBy          String?   @db.ObjectId
+  version            Int       @default(1)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([tenantId, capabilityKey])
+  @@index([tenantId])
+  @@map("tenant_entitlements")
 }
 
 model PlatformPlan {
