@@ -141,12 +141,7 @@ jobs:
       source-commit: ${{ needs.publish.outputs.revision }}
       commit-message: ${{ github.event.release.name || github.event.release.tag_name || github.event.head_commit.message || 'workflow dispatch' }}
       status: ${{ needs.publish.result == 'success' && needs.verify.result == 'success' && 'success' || 'failure' }}
-    secrets:
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
-      DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
-      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    secrets: inherit
 
   notify-deploy:
     name: Notify deploy
@@ -162,9 +157,4 @@ jobs:
       status: ${{ needs.deploy.outputs.configured == 'false' && 'skipped' || needs.smoke-test.result == 'success' && 'success' || 'failure' }}
       reason: ${{ needs.deploy.outputs.configured == 'false' && needs.deploy.outputs.reason || needs.deploy.result == 'failure' && 'El deploy a Render falló.' || needs.smoke-test.result == 'failure' && 'El smoke test de salud del backend falló.' || '' }}
       discord-message-id: ${{ needs.notify-image.outputs.discord-message-id }}
-    secrets:
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
-      DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
-      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    secrets: inherit
