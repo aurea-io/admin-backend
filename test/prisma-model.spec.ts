@@ -41,4 +41,70 @@ describe('Platform User Model & Types', () => {
     expect(ModuleCatalogStatus.toBeDeprecated).toBe('toBeDeprecated');
     expect(ModuleCatalogStatus.deprecated).toBe('deprecated');
   });
+
+  it('should define PlanStatus and PlanBillingInterval enums', async () => {
+    const { PlanStatus, PlanBillingInterval } = await import('@prisma/client');
+    expect(PlanStatus.draft).toBe('draft');
+    expect(PlanStatus.active).toBe('active');
+    expect(PlanStatus.archived).toBe('archived');
+
+    expect(PlanBillingInterval.monthly).toBe('monthly');
+    expect(PlanBillingInterval.yearly).toBe('yearly');
+    expect(PlanBillingInterval.quarterly).toBe('quarterly');
+    expect(PlanBillingInterval.one_time).toBe('one_time');
+  });
+
+  it('should validate PlatformPlan and TenantAddon structures', async () => {
+    const { PlanStatus, PlanBillingInterval } = await import('@prisma/client');
+    type PlatformPlanType = import('@prisma/client').PlatformPlan;
+    type TenantAddonType = import('@prisma/client').TenantAddon;
+
+    const mockPlan: Partial<PlatformPlanType> = {
+      id: '65f1a2b3c4d5e6f7a8b9c0d2',
+      key: 'pro',
+      name: 'Pro Tier',
+      description: 'Professional tier with advanced capabilities',
+      status: PlanStatus.active,
+      displayOrder: 1,
+      includedFeatures: ['services.bookings.create', 'services.bookings.photo_upload'],
+      prices: [
+        {
+          currency: 'USD',
+          amount: 49.99,
+          interval: PlanBillingInterval.monthly,
+          isActive: true,
+        },
+      ],
+      credits: {
+        monthly: 500,
+        rollover: true,
+      },
+      limits: {
+        bookingsPerMonth: 1000,
+        storageBytes: 1073741824,
+      },
+      trialDays: 14,
+      gracePeriodDays: 3,
+      isPopular: true,
+      version: 1,
+      isActive: true,
+    };
+
+    expect(mockPlan.key).toBe('pro');
+    expect(mockPlan.status).toBe(PlanStatus.active);
+    expect(mockPlan.prices?.[0]?.currency).toBe('USD');
+    expect(mockPlan.credits?.monthly).toBe(500);
+
+    const mockAddon: Partial<TenantAddonType> = {
+      id: '65f1a2b3c4d5e6f7a8b9c0d3',
+      tenantId: '65f1a2b3c4d5e6f7a8b9c0d4',
+      addonKey: 'credits_100',
+      credits: 100,
+      status: 'active',
+      renews: true,
+    };
+
+    expect(mockAddon.addonKey).toBe('credits_100');
+    expect(mockAddon.credits).toBe(100);
+  });
 });

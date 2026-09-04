@@ -175,7 +175,7 @@ describe('AuthService', () => {
 
       expect(result.accessToken).toBe('mock-jwt-token');
       expect(mockGoogleAuthService.verifyIdToken).toHaveBeenCalledWith('valid-google-id-token');
-      expect(result.user.googleId ?? mockUser.googleId).toBe('google-uid-123');
+      expect((result.user as any).googleId ?? mockUser.googleId).toBe('google-uid-123');
     });
 
     it('should link googleId to existing user with matching email and login', async () => {

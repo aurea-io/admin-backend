@@ -23,7 +23,8 @@ describe('AuthController', () => {
       user: { id: 'u1', email: 'admin@aurea.io' },
     });
 
-    const result = await controller.login(loginDto);
+    const mockResponse: any = { cookie: vi.fn(), clearCookie: vi.fn() };
+    const result = await controller.login(loginDto, mockResponse);
     expect(mockAuthService.login).toHaveBeenCalledWith(loginDto);
     expect(result.accessToken).toBe('token-123');
   });
@@ -37,7 +38,8 @@ describe('AuthController', () => {
       user: { id: 'u1', email: 'admin@aurea.io' },
     });
 
-    const result = await controller.googleLogin(googleDto);
+    const mockResponse: any = { cookie: vi.fn(), clearCookie: vi.fn() };
+    const result = await controller.googleLogin(googleDto, mockResponse);
     expect(mockAuthService.loginWithGoogle).toHaveBeenCalledWith(googleDto);
     expect(result.accessToken).toBe('token-google');
   });
@@ -83,8 +85,9 @@ describe('AuthController', () => {
       accessToken: 'new-token',
     });
 
-    const result = await controller.changePassword(userPayload, dto);
+    const mockResponse: any = { cookie: vi.fn(), clearCookie: vi.fn() };
+    const result = await controller.changePassword(userPayload, dto, mockResponse);
     expect(mockAuthService.changePassword).toHaveBeenCalledWith('u1', dto);
-    expect(result.tokenVersion).toBe(2);
+    expect((result as any).tokenVersion).toBe(2);
   });
 });

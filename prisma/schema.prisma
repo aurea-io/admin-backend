@@ -29,6 +29,35 @@ enum ModuleCatalogStatus {
   deprecated
 }
 
+enum PlanStatus {
+  draft
+  active
+  archived
+}
+
+enum PlanBillingInterval {
+  monthly
+  yearly
+  quarterly
+  one_time
+}
+
+// -----------------------------------------------------------------------------
+// COMPOSITE TYPES (MongoDB Embedded Documents)
+// -----------------------------------------------------------------------------
+
+type PlanPrice {
+  currency String              @default("USD")
+  amount   Float
+  interval PlanBillingInterval @default(monthly)
+  isActive Boolean             @default(true)
+}
+
+type PlanCredits {
+  monthly  Int     @default(0)
+  rollover Boolean @default(false)
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -70,16 +99,41 @@ model PlatformTenant {
 }
 
 model PlatformPlan {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  key             String   @unique
-  name            String
-  description     String?
-  includedFeatures String[] @default([])
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String       @id @default(auto()) @map("_id") @db.ObjectId
+  key              String       @unique
+  name             String
+  description      String?
+  status           PlanStatus   @default(draft)
+  displayOrder     Int          @default(0)
+  includedFeatures String[]     @default([])
+  prices           PlanPrice[]
+  credits          PlanCredits?
+  limits           Json?
+  trialDays        Int          @default(0)
+  gracePeriodDays  Int          @default(3)
+  isPopular        Boolean      @default(false)
+  version          Int          @default(1)
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
+  @@index([status, displayOrder])
   @@map("plans")
+}
+
+model TenantAddon {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String    @db.ObjectId
+  addonKey   String
+  credits    Int
+  status     String    @default("active")
+  renews     Boolean   @default(true)
+  validUntil DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@map("tenant_addons")
 }
 
 model PlatformFeature {
