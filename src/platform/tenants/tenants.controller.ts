@@ -11,11 +11,14 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { PlatformJwtAuthGuard } from '../../auth/guards/platform-jwt-auth.guard.js';
 import { PlatformPermissionsGuard } from '../../auth/guards/platform-permissions.guard.js';
 import { RequireFeatures } from '../../auth/decorators/require-features.decorator.js';
+import { AuditInterceptor } from '../../audit/interceptors/audit.interceptor.js';
+import { Audited } from '../../audit/decorators/audited.decorator.js';
 import { TenantsService } from './tenants.service.js';
 import {
   CreateTenantDto,
@@ -27,6 +30,7 @@ import {
 
 @Controller(['admin/tenants', 'platform/tenants'])
 @UseGuards(PlatformJwtAuthGuard, PlatformPermissionsGuard)
+@UseInterceptors(AuditInterceptor)
 export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 
@@ -61,6 +65,7 @@ export class TenantsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequireFeatures('platform.tenants.write')
+  @Audited({ entity: 'tenants', action: 'tenants.create' })
   create(@Body() dto: CreateTenantDto) {
     return this.tenantsService.create(dto);
   }
@@ -71,6 +76,7 @@ export class TenantsController {
    */
   @Patch(':id')
   @RequireFeatures('platform.tenants.write')
+  @Audited({ entity: 'tenants', action: 'tenants.update' })
   update(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
     return this.tenantsService.update(id, dto);
   }
@@ -81,6 +87,7 @@ export class TenantsController {
    */
   @Patch(':id/status')
   @RequireFeatures('platform.tenants.write')
+  @Audited({ entity: 'tenants', action: 'tenants.status_change' })
   updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateTenantStatusDto,
@@ -94,6 +101,7 @@ export class TenantsController {
    */
   @Put(':id/entitlements')
   @RequireFeatures('platform.tenants.write')
+  @Audited({ entity: 'tenants', action: 'tenants.entitlements_update' })
   updateEntitlements(
     @Param('id') id: string,
     @Body() dto: UpdateTenantEntitlementsDto,

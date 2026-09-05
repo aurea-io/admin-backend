@@ -248,3 +248,28 @@ model ModuleCatalogEntry {
   @@index([moduleKey])
   @@map("module_catalog")
 }
+
+// Immutable platform audit logs collection for tracking all administrative mutations
+model PlatformAuditLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String?  @db.ObjectId
+  actorId    String
+  actorEmail String?
+  actorRole  String?
+  action     String
+  entity     String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entity, createdAt])
+  @@index([actorId, createdAt])
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+  @@map("platform_audit_logs")
+}
+
