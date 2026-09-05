@@ -107,4 +107,61 @@ describe('Platform User Model & Types', () => {
     expect(mockAddon.addonKey).toBe('credits_100');
     expect(mockAddon.credits).toBe(100);
   });
+
+  it('should validate TenantSubscription and TenantEntitlement structures', async () => {
+    type TenantSubscriptionType = import('@prisma/client').TenantSubscription;
+    type TenantEntitlementType = import('@prisma/client').TenantEntitlement;
+
+    const mockSub: Partial<TenantSubscriptionType> = {
+      id: '65f1a2b3c4d5e6f7a8b9c0d5',
+      tenantId: '65f1a2b3c4d5e6f7a8b9c0d6',
+      planKey: 'pro',
+      status: 'active',
+    };
+
+    expect(mockSub.planKey).toBe('pro');
+    expect(mockSub.status).toBe('active');
+
+    const mockEntitlement: Partial<TenantEntitlementType> = {
+      id: '65f1a2b3c4d5e6f7a8b9c0d7',
+      tenantId: '65f1a2b3c4d5e6f7a8b9c0d6',
+      capabilityKey: 'services.bookings.photo_upload',
+      effect: 'allow',
+      source: 'owner_override',
+      version: 1,
+    };
+
+    expect(mockEntitlement.capabilityKey).toBe('services.bookings.photo_upload');
+    expect(mockEntitlement.effect).toBe('allow');
+    expect(mockEntitlement.source).toBe('owner_override');
+  });
+
+  it('should validate PlatformAuditLog structure mapped to platform_audit_logs', async () => {
+    type PlatformAuditLogType = import('@prisma/client').PlatformAuditLog;
+
+    const mockAuditLog: Partial<PlatformAuditLogType> = {
+      id: '65f1a2b3c4d5e6f7a8b9c0d8',
+      tenantId: '65f1a2b3c4d5e6f7a8b9c0d6',
+      actorId: '65f1a2b3c4d5e6f7a8b9c0d1',
+      actorEmail: 'admin@aurea.io',
+      actorRole: 'platform_owner',
+      action: 'tenants.status_change',
+      entity: 'tenants',
+      entityId: '65f1a2b3c4d5e6f7a8b9c0d6',
+      before: { status: 'active', isActive: true },
+      after: { status: 'suspended', isActive: false },
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0 Chrome/120.0',
+      metadata: { path: '/api/v1/admin/tenants/65f1a2b3c4d5e6f7a8b9c0d6/status', method: 'PATCH' },
+      createdAt: new Date('2026-09-04T20:00:00Z'),
+    };
+
+    expect(mockAuditLog.action).toBe('tenants.status_change');
+    expect(mockAuditLog.entity).toBe('tenants');
+    expect((mockAuditLog.before as any)?.status).toBe('active');
+    expect((mockAuditLog.after as any)?.status).toBe('suspended');
+    expect(mockAuditLog.ipAddress).toBe('192.168.1.1');
+    expect(mockAuditLog.actorEmail).toBe('admin@aurea.io');
+  });
 });
+

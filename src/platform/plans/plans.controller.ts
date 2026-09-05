@@ -10,10 +10,13 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { PlatformJwtAuthGuard } from '../../auth/guards/platform-jwt-auth.guard.js';
 import { PlatformPermissionsGuard } from '../../auth/guards/platform-permissions.guard.js';
 import { RequireFeatures } from '../../auth/decorators/require-features.decorator.js';
+import { AuditInterceptor } from '../../audit/interceptors/audit.interceptor.js';
+import { Audited } from '../../audit/decorators/audited.decorator.js';
 import { PlansService } from './plans.service.js';
 import {
   CreatePlanDto,
@@ -24,6 +27,7 @@ import {
 
 @Controller('platform/plans')
 @UseGuards(PlatformJwtAuthGuard, PlatformPermissionsGuard)
+@UseInterceptors(AuditInterceptor)
 export class PlansController {
   constructor(private readonly plansService: PlansService) {}
 
@@ -54,6 +58,7 @@ export class PlansController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequireFeatures('platform.plans.write')
+  @Audited({ entity: 'plans', action: 'plans.create' })
   create(@Body() dto: CreatePlanDto) {
     return this.plansService.create(dto);
   }
@@ -64,6 +69,7 @@ export class PlansController {
    */
   @Patch(':idOrKey')
   @RequireFeatures('platform.plans.write')
+  @Audited({ entity: 'plans', action: 'plans.update', entityIdParam: 'idOrKey' })
   update(@Param('idOrKey') idOrKey: string, @Body() dto: UpdatePlanDto) {
     return this.plansService.update(idOrKey, dto);
   }
@@ -74,6 +80,7 @@ export class PlansController {
    */
   @Patch(':idOrKey/status')
   @RequireFeatures('platform.plans.write')
+  @Audited({ entity: 'plans', action: 'plans.status_change', entityIdParam: 'idOrKey' })
   updateStatus(
     @Param('idOrKey') idOrKey: string,
     @Body() dto: UpdatePlanStatusDto,
@@ -88,7 +95,9 @@ export class PlansController {
   @Delete(':idOrKey')
   @HttpCode(HttpStatus.OK)
   @RequireFeatures('platform.plans.write')
+  @Audited({ entity: 'plans', action: 'plans.archive', entityIdParam: 'idOrKey' })
   archive(@Param('idOrKey') idOrKey: string) {
     return this.plansService.archive(idOrKey);
   }
 }
+

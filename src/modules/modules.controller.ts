@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -15,6 +16,8 @@ import type { ModuleCatalogKind, ModuleCatalogStatus } from '@prisma/client';
 import { PlatformJwtAuthGuard } from '../auth/guards/platform-jwt-auth.guard.js';
 import { PlatformPermissionsGuard } from '../auth/guards/platform-permissions.guard.js';
 import { RequireFeatures } from '../auth/decorators/require-features.decorator.js';
+import { AuditInterceptor } from '../audit/interceptors/audit.interceptor.js';
+import { Audited } from '../audit/decorators/audited.decorator.js';
 import { ModulesService } from './modules.service.js';
 import {
   CreateModuleDto,
@@ -25,6 +28,7 @@ import {
 
 @Controller('modules')
 @UseGuards(PlatformJwtAuthGuard, PlatformPermissionsGuard)
+@UseInterceptors(AuditInterceptor)
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
 
@@ -62,6 +66,7 @@ export class ModulesController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequireFeatures('modules.write')
+  @Audited({ entity: 'modules', action: 'modules.create' })
   create(@Body() dto: CreateModuleDto) {
     return this.modulesService.create(dto);
   }
@@ -72,6 +77,7 @@ export class ModulesController {
    */
   @Patch(':key')
   @RequireFeatures('modules.write')
+  @Audited({ entity: 'modules', action: 'modules.update', entityIdParam: 'key' })
   update(@Param('key') key: string, @Body() dto: UpdateModuleDto) {
     return this.modulesService.update(key, dto);
   }
@@ -82,6 +88,7 @@ export class ModulesController {
    */
   @Patch(':key/status')
   @RequireFeatures('modules.status')
+  @Audited({ entity: 'modules', action: 'modules.status_change', entityIdParam: 'key' })
   updateStatus(@Param('key') key: string, @Body() dto: UpdateModuleStatusDto) {
     return this.modulesService.updateStatus(key, dto);
   }
@@ -93,7 +100,9 @@ export class ModulesController {
   @Delete(':key')
   @HttpCode(HttpStatus.OK)
   @RequireFeatures('modules.write')
+  @Audited({ entity: 'modules', action: 'modules.archive', entityIdParam: 'key' })
   archive(@Param('key') key: string) {
     return this.modulesService.archive(key);
   }
 }
+
